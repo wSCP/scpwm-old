@@ -8,11 +8,7 @@ func NewClients() Clients {
 	return make(Clients, 0)
 }
 
-func (cs Clients) Find(sel Selector, loc coordinate) bool {
-	return false
-}
-
-func (cs Clients) Match(sel Selector, ref, loc *coordinate) bool {
+func (cs Clients) Select(sel ...Selector) bool {
 	return false
 }
 
@@ -24,13 +20,13 @@ type Client struct {
 	loc      coordinate
 	class    string
 	instance string
-	*Window
+	rules    []Rule
+	*window
 	*floater
 	*tiler
 	*state
 	*border
 	*shift
-	//rule *Rule
 }
 
 type floater struct {
@@ -57,7 +53,14 @@ type tiler struct {
 	rectangle xproto.Rectangle
 }
 
+func (t *tiler) TiledArea() int {
+	return int(t.rectangle.Width * t.rectangle.Height)
+}
+
 type state struct {
+	wmState     xproto.Atom
+	numStates   int
+	stack       int
 	focus       bool
 	icccmFocus  bool
 	vacant      bool
@@ -95,29 +98,63 @@ const (
 
 //client_t *make_client(xcb_window_t win, unsigned int border_width);
 
-func (c *Client) IsTiled() bool {
-	if c != nil {
-		return (!c.floating && !c.fullscreen)
-	}
-	return false
+func (c *Client) Tiled() bool {
+	return (!c.floating && !c.fullscreen)
 }
 
-func (c *Client) IsFloating() bool {
-	if c != nil {
-		return (c.floating && !c.fullscreen)
-	}
-	return false
+func (c *Client) Floating() bool {
+	return (c.floating && !c.fullscreen)
 }
 
 func (c *Client) Rectangle() xproto.Rectangle {
-	if c.IsTiled() {
+	if c.Tiled() {
 		return c.tiler.rectangle
 	}
 	return c.floater.rectangle
 }
 
+func (c *Client) Center(m *Monitor) {
+	r := c.floater.rectangle
+	a := m.rectangle
+
+	if r.Width >= a.Width {
+		r.X = a.X
+	} else {
+		r.X = a.X + (int16(a.Width)-int16(r.Width))/2
+	}
+
+	if r.Height >= a.Height {
+		r.Y = a.Y
+	} else {
+		r.Y = a.Y + (int16(a.Height)-int16(r.Height))/2
+	}
+
+	r.X -= int16(c.borderWidth)
+	r.Y -= int16(c.borderWidth)
+}
+
+func (c *Client) Adjacent(o *Client, d Direction) bool {
+	cr := c.Rectangle()
+	or := o.Rectangle()
+	switch d {
+	case Right:
+		return (cr.X + int16(cr.Width)) == or.X
+	case Down:
+		return (cr.Y + int16(cr.Height)) == or.Y
+	case Left:
+		return (or.X + int16(or.Width)) == cr.X
+	case Up:
+		return (or.Y + int16(or.Height)) == cr.Y
+	}
+	return false
+}
+
 func (c *Client) SideHandle(dir Direction, p xproto.Point) {
 	//void get_side_handle(client_t *c, direction_t dir, xcb_point_t *pt)
+}
+
+func (c *Client) DrawBorder(focusedWindow, focusedMonitor bool) {
+	//void Window_draw_border(client_t *n, bool focused_Window, bool focused_monitor);
 }
 
 func (c *Client) BorderColor(focusedWindow, focusedMonitor bool) uint32 {
@@ -166,6 +203,150 @@ func (c *Client) BorderColor(focusedWindow, focusedMonitor bool) uint32 {
 	return 0
 }
 
+type ClientState int
+
+const (
+	FullScreen ClientState = iota
+	PseudoTiled
+	Floating
+	Locked
+	Sticky
+	Private
+	Urgent
+)
+
+func (c *Client) Set(cs ClientState, v bool) {
+	switch cs {
+	case FullScreen:
+		c.setFullScreen(v)
+	case PseudoTiled:
+		c.setPseudoTiled(v)
+	case Floating:
+		c.setFloating(v)
+	case Locked:
+		c.setLocked(v)
+	case Sticky:
+		c.setSticky(v)
+	case Private:
+		c.setPrivate(v)
+	case Urgent:
+		c.setUrgent(v)
+	}
+}
+
+func (c *Client) setFullScreen(v bool) {
+	//if n != nil || n.Client.fullscreen != v {
+	//n.Client.fullscreen = v
+	//if v {
+	//ewmh_wm_state_add(c, ewmh->_NET_WM_STATE_FULLSCREEN);
+	//} else {
+	//ewmh_wm_state_remove(c, ewmh->_NET_WM_STATE_FULLSCREEN);
+	//stack(n, STACK_ABOVE);
+	//}
+	//}
+}
+
+func (c *Client) setPseudoTiled(v bool) {
+	//if n != nil || n.Client.pseudoTiled != v {
+	//	n.Client.pseudoTiled = v
+	//}
+}
+
+func (c *Client) setFloating(v bool) {
+	//if n != nil || !n.Client.fullscreen || n.Client.floating != v {
+	/*
+		client_t *c = n->client;
+
+		PRINTF("floating %X: %s\n", c->window, BOOLSTR(value));
+		put_status(SBSC_MASK_WINDOW_STATE, "window_state floating %s 0x%X\n", ONOFFSTR(value), c->window);
+
+		n->split_mode = MODE_AUTOMATIC;
+		c->floating = n->vacant = value;
+		update_vacant_state(n->parent);
+
+		if (value) {
+			enable_floating_atom(c->window);
+			unrotate_brother(n);
+		} else {
+			disable_floating_atom(c->window);
+			rotate_brother(n);
+		}
+
+		stack(n, STACK_ABOVE);
+	*/
+	//}
+}
+
+func (c *Client) setLocked(v bool) {
+	//void set_locked(monitor_t *m, desktop_t *d, client_t *n, bool value);
+	//if n != nil || n.Client.locked != v {
+	//client_t *c = n->client;
+
+	//PRINTF("set locked %X: %s\n", c->window, BOOLSTR(value));
+	//put_status(SBSC_MASK_WINDOW_STATE, "window_state locked %s 0x%X\n", ONOFFSTR(value), c->window);
+
+	//n.Client.locked = v
+	//window_draw_border(n, d->focus == n, m == mon);
+	//}
+}
+
+func (c *Client) setSticky(v bool) {
+	//void set_sticky(monitor_t *m, desktop_t *d, client_t *n, bool value);
+	/*
+		if (n == NULL || n->client->sticky == value)
+			return;
+
+		client_t *c = n->client;
+
+		PRINTF("set sticky %X: %s\n", c->window, BOOLSTR(value));
+		put_status(SBSC_MASK_WINDOW_STATE, "window_state sticky %s 0x%X\n", ONOFFSTR(value), c->window);
+
+		if (d != m->desk)
+			transfer_client(m, d, n, m, m->desk, m->desk->focus);
+
+		c->sticky = value;
+		if (value) {
+			ewmh_wm_state_add(c, ewmh->_NET_WM_STATE_STICKY);
+			m->num_sticky++;
+		} else {
+			ewmh_wm_state_remove(c, ewmh->_NET_WM_STATE_STICKY);
+			m->num_sticky--;
+		}
+
+		window_draw_border(n, d->focus == n, m == mon);
+	*/
+}
+
+func (c *Client) setPrivate(v bool) {
+	//void set_private(monitor_t *m, desktop_t *d, client_t *n, bool value);
+	/*
+		if (n == NULL || n->client->private == value)
+			return;
+
+		client_t *c = n->client;
+
+		PRINTF("set private %X: %s\n", c->window, BOOLSTR(value));
+		put_status(SBSC_MASK_WINDOW_STATE, "window_state private %s 0x%X\n", ONOFFSTR(value), c->window);
+
+		c->private = value;
+		update_privacy_level(n, value);
+		window_draw_border(n, d->focus == n, m == mon);
+	*/
+}
+
+func (c *Client) setUrgent(v bool) {
+	//void set_urgency(monitor_t *m, desktop_t *d, client_t *n, bool value);
+	/*
+		if (value && mon->desk->focus == n)
+			return;
+		n->client->urgent = value;
+		window_draw_border(n, d->focus == n, m == mon);
+
+		put_status(SBSC_MASK_WINDOW_STATE, "window_state urgent %s 0x%X\n", ONOFFSTR(value), n->client->window);
+		put_status(SBSC_MASK_REPORT);
+	*/
+}
+
 type clientType int
 
 const (
@@ -208,25 +389,11 @@ var stringClientMode map[string]clientMode = map[string]clientMode{
 	"manual":    cmManual,
 }
 
-func locateClient(e *Euclid, loc coordinate, sel ...Selector) (coordinate, bool) {
-	return loc, false
-}
-
-/*
-func (n *Node) isAdjacent(o *Node, d Direction) bool {
-	switch d {
-	case Right:
-		return (n.Rectangle.X + int16(n.Rectangle.Width)) == o.Rectangle.X
-	case Down:
-		return (n.Rectangle.Y + int16(n.Rectangle.Height)) == o.Rectangle.Y
-	case Left:
-		return (o.Rectangle.X + int16(o.Rectangle.Width)) == n.Rectangle.X
-	case Up:
-		return (o.Rectangle.Y + int16(o.Rectangle.Height)) == n.Rectangle.Y
-	}
+func selectClient(e *Euclid, sel ...Selector) bool {
 	return false
 }
 
+/*
 func (n *Node) fence(dir Direction) *Node {
 	/*if n != nil {
 		t := n.top
@@ -243,13 +410,7 @@ func (n *Node) fence(dir Direction) *Node {
 	return nil
 }
 
-func (n *Node) tiledArea() int {
-	if n != nil {
-		rect := n.tRectangle
-		return int(rect.Width * rect.Height)
-	}
-	return -1
-}
+
 
 type Node struct {
 	idx   int

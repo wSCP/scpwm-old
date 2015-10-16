@@ -1,64 +1,218 @@
 package main
 
-//type Rule struct {
-//	cause  string
-//	effect string
-//	reuse  bool
-//	prev   *Rule
-//	next   *Rule
-//}
+import (
+	"fmt"
+	"strconv"
+)
 
-//func (r *Rule) Pop(cy Cycle) *Rule {
-//	return nil
-//}
+type ruleCause int
 
-//func (r *Rule) Push(cy Cycle, o *Rule) {}
+const (
+	generalName ruleCause = iota
+	className
+	instanceName
+	monitorDescription
+	desktopDescription
+	clientDescription
+	windowDescription
+)
 
-type Rule struct {
-	className    string
-	instanceName string
-	monitorDesc  string
-	desktopDesc  string
-	//nodeDesc     string
-	splitD      string
-	splitR      float64
-	minWidth    uint16
-	maxWidth    uint16
-	minHeight   uint16
-	maxHeight   uint16
-	pseudoTiled bool
-	floating    bool
-	locked      bool
-	sticky      bool
-	private     bool
-	center      bool
-	follow      bool
-	manage      bool
-	focus       bool
-	border      bool
+var stringRuleCause map[string]ruleCause = map[string]ruleCause{
+	"general":  generalName,
+	"class":    className,
+	"instance": instanceName,
+	"monitor":  monitorDescription,
+	"desktop":  desktopDescription,
+	"client":   clientDescription,
+	"window":   windowDescription,
 }
 
-func NewRule() *Rule {
-	return &Rule{
-		manage: true,
-		focus:  true,
-		border: true,
+func (r ruleCause) String() string {
+	switch r {
+	case className:
+		return "class"
+	case instanceName:
+		return "instance"
+	case monitorDescription:
+		return "monitor"
+	case desktopDescription:
+		return "desktop"
+	case clientDescription:
+		return "client"
+	case windowDescription:
+		return "window"
 	}
+	return ""
 }
 
-//func (c *Consequence) Pending() *Pending {
-/*
-	pending_rule_t *make_pending_rule(int fd, xcb_window_t win, rule_consequence_t *csq)
-	{
-	pending_rule_t *pr = malloc(sizeof(pending_rule_t));
-	pr->prev = pr->next = NULL;
-	pr->fd = fd;
-	pr->win = win;
-	pr.consequence = c
-	return pr;
+type ruleEffect int
+
+const (
+	setSplitDirection ruleEffect = iota
+	setSplitRatio
+	minWidth
+	maxWidth
+	minHeight
+	maxHeight
+	isPseudoTiled
+	isFloating
+	isLocked
+	isSticky
+	isPrivate
+	isBordered
+	isCentered
+	isFollowed
+	isManaged
+	isFocused
+)
+
+var stringRuleEffect map[string]ruleEffect = map[string]ruleEffect{
+	"direction":   setSplitDirection, //string
+	"ratio":       setSplitRatio,     //float64
+	"minwidth":    minWidth,          //uint16
+	"maxwidth":    maxWidth,          //uint16
+	"minheight":   minHeight,         //uint16
+	"maxheight":   maxHeight,         //uint16
+	"pseudotiled": isPseudoTiled,     //bool
+	"floating":    isFloating,        //bool
+	"lock":        isLocked,          //bool
+	"sticky":      isSticky,          //bool
+	"private":     isPrivate,         //bool
+	"bordered":    isBordered,        //bool
+	"centered":    isCentered,        //bool
+	"follow":      isFollowed,        //bool
+	"manage":      isManaged,         //bool
+	"focus":       isFocused,         //bool
+}
+
+func (r ruleEffect) String() string {
+	switch r {
+	case setSplitDirection:
+		return "split direction"
+	case setSplitRatio:
+		return "split ratio"
+	case minWidth:
+		return "minimum width"
+	case maxWidth:
+		return "maximum width"
+	case minHeight:
+		return "minimum height"
+	case maxHeight:
+		return "maximum height"
+	case isPseudoTiled:
+		return "pseudo tiled"
+	case isFloating:
+		return "floating"
+	case isLocked:
+		return "locked"
+	case isSticky:
+		return "sticky"
+	case isPrivate:
+		return "private"
+	case isBordered:
+		return "bordered"
+	case isCentered:
+		return "centered"
+	case isFollowed:
+		return "follows"
+	case isManaged:
+		return "managed"
+	case isFocused:
+		return "focused"
 	}
-*/
-//	return nil
+	return ""
+}
+
+type Rule interface {
+	Cause() ruleCause
+	Key() string
+	Effect() ruleEffect
+	Value() string
+	Uint16() uint16
+	Float() float64
+	Bool() bool
+	Reuse() bool
+}
+
+type rule struct {
+	cause  ruleCause
+	key    string
+	effect ruleEffect
+	value  string
+	reuse  bool
+}
+
+func newRule(cause, effect, key, value string, reuse bool) Rule {
+	if rc, ok := stringRuleCause[cause]; ok {
+		if re, ok := stringRuleEffect[effect]; ok {
+			return &rule{
+				cause:  rc,
+				key:    cause,
+				effect: re,
+				value:  value,
+				reuse:  reuse,
+			}
+		}
+	}
+	return nil
+}
+
+func (r *rule) Cause() ruleCause {
+	return r.cause
+}
+
+func (r *rule) Key() string {
+	return r.key
+}
+
+func (r *rule) Effect() ruleEffect {
+	return r.effect
+}
+
+func (r *rule) Value() string {
+	return r.value
+}
+
+func (r *rule) String() string {
+	return fmt.Sprintf(
+		"(%s : %s) (%s : %s)  %t",
+		r.cause,
+		r.key,
+		r.effect,
+		r.value,
+		r.reuse,
+	)
+}
+
+func (r *rule) Uint16() uint16 {
+	if i, err := strconv.ParseUint(r.value, 10, 16); err == nil {
+		return uint16(i)
+	}
+	return 0
+}
+
+func (r *rule) Float() float64 {
+	if f, err := strconv.ParseFloat(r.value, 64); err == nil {
+		return f
+	}
+	return 0.0
+}
+
+func (r *rule) Bool() bool {
+	if b, err := strconv.ParseBool(r.value); err == nil {
+		return b
+	}
+	return false
+}
+
+func (r *rule) Reuse() bool {
+	return r.reuse
+}
+
+//var defaultWindowRuleset = []Rule{
+//	newRule("window", "manage", "true", true),
+//	newRule("window", "focus", "true", true),
+//	newRule("window", "bordered", "true", true),
 //}
 
 //func (e *Euclid) applyRules(win *Window, csq *Consequence) {}
@@ -66,17 +220,3 @@ func NewRule() *Rule {
 //func (e *Euclid) scheduleRules(win *Window, csq *Consequence) bool {
 //	return false
 //}
-
-//type Pending struct {
-//int fd;
-//window      xproto.Window
-//consequence *Consequence
-//prev        *Pending
-//next        *Pending
-//}
-
-//func (p *Pending) Pop(cy Cycle) *Pending {
-//return nil
-//}
-
-//func (p *Pending) Push(cy Cycle, o *Pending) {}

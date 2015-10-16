@@ -18,36 +18,59 @@ var (
 	ClientEventMask uint32 = (xproto.EventMaskPropertyChange | xproto.EventMaskFocusChange)
 )
 
-//uint32_t values[] = {ROOT_EVENT_MASK};
-//xcb_generic_error_t *e = xcb_request_check(dpy, xcb_change_window_attributes_checked(dpy, root, XCB_CW_EVENT_MASK, values));
-//var values []uint32 = []uint32{RootEventMask}
-//err = xproto.ChangeWindowAttributesChecked(c, screen.Root, xproto.CwEventMask, values).Check()
-//if err != nil {
-//	spew.Dump(err)
-//}
-
 type Event struct {
 	evt xgb.Event
 	err xgb.Error
 }
 
 type XHandle interface {
+	Pointer() Pointer
+	Connectr
+	Informr
+	Eventr
+	Windowr
+	Focusr
+	atomic.Atomic
+	Ewmh
+}
+
+type Connectr interface {
 	Conn() *xgb.Conn
+}
+
+type Informr interface {
 	Setup() *xproto.SetupInfo
 	Screen() *xproto.ScreenInfo
 	Root() xproto.Window
+	Meta() xproto.Window
 	Motion() xproto.Window
-	Empty() bool
-	Quit()
-	Quitting() bool
+}
+
+type Eventr interface {
 	Enqueue(xgb.Event, xgb.Error)
 	Dequeue() (xgb.Event, xgb.Error)
 	Evt(chan struct{}, chan struct{}, chan struct{})
-	Windower
-	InputFocus
-	atomic.Atomic
-	Ewmh
-	Pointer
+	Empty() bool
+	Quitr
+}
+
+type Quitr interface {
+	Quit()
+	Quitting() bool
+}
+
+type Windowr interface {
+	New() *Window
+	Make(xproto.Window) *Window
+	Schedule(*Euclid, xproto.Window) bool
+	Manage(*Euclid, *Window, ...Rule) bool
+	Unmanage(*Window)
+	AdoptOrphans()
+}
+
+type Focusr interface {
+	SetInputFocus(*Client)
+	ClearInputFocus()
 }
 
 type xhandle struct {
@@ -61,11 +84,9 @@ type xhandle struct {
 	Events  []Event
 	EvtsLck *sync.RWMutex
 	quit    bool
-	Windower
-	InputFocus
+	Windowr
 	atomic.Atomic
 	Ewmh
-	Pointer
 }
 
 func mkMeta(s *xproto.ScreenInfo, c *xgb.Conn) (xproto.Window, error) {
@@ -86,8 +107,8 @@ func mkMeta(s *xproto.ScreenInfo, c *xgb.Conn) (xproto.Window, error) {
 		0,
 		xproto.WindowClassInputOnly,
 		s.RootVisual,
-		0,          //xproto.CwEventMask|xproto.CwOverrideRedirect,
-		[]uint32{}, //nil, //[]uint32{1, xproto.EventMaskPropertyChange},
+		0,
+		[]uint32{},
 	)
 	xproto.MapWindow(c, meta)
 	return meta, nil
@@ -148,7 +169,7 @@ func NewXHandle(display string, ewhm []string) (*xhandle, error) {
 	mr := NewMotionRecorder(h.conn, h.root, h.motion)
 	h.pointer = NewPointer(mr)
 
-	h.Windower = NewWindower(h.conn, h.root)
+	h.Windowr = NewWindowr(h.conn, h.root)
 
 	h.InputFocus = NewInputFocus(h.conn, h.root)
 
@@ -182,8 +203,16 @@ func (h *xhandle) Root() xproto.Window {
 	return h.root
 }
 
+func (h *xhandle) Meta() xproto.Window {
+	return h.meta
+}
+
 func (h *xhandle) Motion() xproto.Window {
 	return h.motion
+}
+
+func (h *xhandle) Pointer() Pointer {
+	return h.pointer
 }
 
 func (h *xhandle) Empty() bool {
@@ -292,6 +321,77 @@ func process(h XHandle, pre, post chan struct{}) {
 	}
 }
 
+func (h *xhandle) SetInputFocus(c *Client) {
+	if c == nil {
+		i.ClearInputFocus()
+	} else {
+		if c.icccmFocus {
+			//send_client_message(n->client->window, ewmh->WM_PROTOCOLS, WM_TAKE_FOCUS)
+		}
+		xproto.SetInputFocusChecked(h.conn, xproto.InputFocusPointerRoot, c.window.Window, xproto.TimeCurrentTime)
+	}
+}
+
+func (h *xhandle) ClearInputFocus() {
+	xproto.SetInputFocusChecked(h.conn, xproto.InputFocusPointerRoot, h.root, xproto.TimeCurrentTime)
+}
+
+type windowr struct {
+	conn *xgb.Conn
+	root xproto.Window
+}
+
+func NewWindowr(c *xgb.Conn, r xproto.Window) Windowr {
+	return &windower{
+		conn: c,
+		root: r,
+	}
+}
+
+func (w *windowr) New() *window {
+	win, err := xproto.NewWindowId(w.conn)
+	if err != nil {
+		return nil
+	}
+	return &window{w.conn, win, w.root}
+}
+
+func (w *windowr) Make(win xproto.Window) *window {
+	return &window{w.conn, win, w.root}
+}
+
+func (w *windowr) Schedule(e *Euclid, win xproto.Window) bool {
+	/*
+			var loc coordinate
+			var overrideRedirect bool
+
+			wa, _ := xproto.GetWindowAttributes(w.conn, win).Reply()
+			if wa != nil {
+				overrideRedirect = wa.OverrideRedirect
+			}
+
+			if !overrideRedirect {
+				if _, exists := locateWindow(e, win); !exists {
+					// nw := w.MakeWindow(win)
+					// rules
+					// return w.Manage(e, nw, rule)
+				}
+		    }
+
+		    return false
+	*/
+}
+
+func (w *windowr) Manage(e *Euclid, win *window, r ...Rule) bool {
+	//void manage_Window(xcb_Window_t win, rule_consequence_t *csq, int fd);
+}
+
+func (w *windowr) Unmanage(win *window) {
+	//void unmanage_Window(xcb_Window_t win);
+}
+
+func (w *windowr) AdoptOrphans() {}
+
 func ClientEvent(c *xgb.Conn, root, w xproto.Window, a xproto.Atom, data ...interface{}) error {
 	evMask := (xproto.EventMaskSubstructureNotify | xproto.EventMaskSubstructureRedirect)
 	cm, err := mkClientMessage(32, w, a, data...)
@@ -347,38 +447,6 @@ func mkClientMessage(format byte, w xproto.Window, t xproto.Atom, data ...interf
 	}, nil
 }
 
-type InputFocus interface {
-	SetInputFocus(*Client)
-	ClearInputFocus()
-}
-
-func NewInputFocus(c *xgb.Conn, r xproto.Window) InputFocus {
-	return &inputFocus{
-		conn: c,
-		root: r,
-	}
-}
-
-type inputFocus struct {
-	conn *xgb.Conn
-	root xproto.Window
-}
-
-func (i *inputFocus) SetInputFocus(c *Client) {
-	if c == nil {
-		i.ClearInputFocus()
-	} else {
-		if c.icccmFocus {
-			//send_client_message(n->client->window, ewmh->WM_PROTOCOLS, WM_TAKE_FOCUS)
-		}
-		xproto.SetInputFocusChecked(i.conn, xproto.InputFocusPointerRoot, c.Window.Window, xproto.TimeCurrentTime)
-	}
-}
-
-func (i *inputFocus) ClearInputFocus() {
-	xproto.SetInputFocusChecked(i.conn, xproto.InputFocusPointerRoot, i.root, xproto.TimeCurrentTime)
-}
-
 /*
 void set_floating_atom(xcb_Window_t win, uint32_t value);
 void enable_floating_atom(xcb_Window_t win);
@@ -387,4 +455,12 @@ void get_atom(char *name, xcb_atom_t *atom);
 void set_atom(xcb_Window_t win, xcb_atom_t atom, uint32_t value);
 bool has_proto(xcb_atom_t atom, xcb_icccm_get_wm_protocols_reply_t *protocols);
 void send_client_message(xcb_Window_t win, xcb_atom_t property, xcb_atom_t value);
-*/
+
+
+*/ //uint32_t values[] = {ROOT_EVENT_MASK};
+//xcb_generic_error_t *e = xcb_request_check(dpy, xcb_change_window_attributes_checked(dpy, root, XCB_CW_EVENT_MASK, values));
+//var values []uint32 = []uint32{RootEventMask}
+//err = xproto.ChangeWindowAttributesChecked(c, screen.Root, xproto.CwEventMask, values).Check()
+//if err != nil {
+//	spew.Dump(err)
+//}

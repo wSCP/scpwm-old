@@ -4,7 +4,7 @@ import "fmt"
 
 type Desktops []*Desktop
 
-func NewDesktops(e *Euclid, m *Monitor) Desktops {
+func NewDesktops() Desktops {
 	return make(Desktops, 0)
 }
 
@@ -20,12 +20,38 @@ func (ds Desktops) Add(e *Euclid, m *Monitor, name string) *Desktop {
 	//ewmh_update_Desktop_names()
 }
 
-func (ds Desktops) Find(sel Selector, loc coordinate) bool {
+func (ds Desktops) Select(sel ...Selector) bool {
 	return false
 }
 
-func (ds Desktops) Match(sel Selector, ref, loc *coordinate) bool {
-	return false
+func (ds Desktops) Pop(p *Desktop) *Desktop {
+	for i, d := range ds {
+		if d.id == p.id {
+			ds = ds[:i+copy(ds[i:], ds[i+1:])]
+		}
+		return d
+	}
+	return nil
+}
+
+func (ds Desktops) Swap(d1, d2 *Desktop) {
+	var i1, i2 int
+	for i, d := range ds {
+		if d.id == d1.id {
+			i1 = i
+		}
+		if d.id == d2.id {
+			i2 = i
+		}
+	}
+	if i1 != i2 {
+		ds[i2] = d1
+		ds[i1] = d2
+	}
+	// update_input_focus();
+	// ewmh_update_wm_Desktops();
+	// ewmh_update_Desktop_names();
+	// ewmh_update_current_Desktop();
 }
 
 func (ds Desktops) Remove(r *Desktop) {
@@ -61,36 +87,6 @@ func (ds Desktops) Last() *Desktop {
 		}
 	}
 	return nil
-}
-
-func (ds Desktops) Pop(p *Desktop) *Desktop {
-	for i, d := range ds {
-		if d.id == p.id {
-			ds = ds[:i+copy(ds[i:], ds[i+1:])]
-		}
-		return d
-	}
-	return nil
-}
-
-func (ds Desktops) Swap(d1, d2 *Desktop) {
-	var i1, i2 int
-	for i, d := range ds {
-		if d.id == d1.id {
-			i1 = i
-		}
-		if d.id == d2.id {
-			i2 = i
-		}
-	}
-	if i1 != i2 {
-		ds[i2] = d1
-		ds[i1] = d2
-	}
-	// update_input_focus();
-	// ewmh_update_wm_Desktops();
-	// ewmh_update_Desktop_names();
-	// ewmh_update_current_Desktop();
 }
 
 func (e *Euclid) desktopDefault() *Desktop {
@@ -151,37 +147,39 @@ func (d *Desktop) Merge(dst *Desktop) {
 }
 
 func (d *Desktop) Arrange() {
-	/*
-		if d.root != nil {
-			setLayout := d.layout
+	setLayout := d.layout
+	e := d.loc.e
 
-			if d.e.Bool("LeafMonocle") && d.TiledCount() == 1 {
-				d.layout = monocle
-			}
+	if e.Bool("LeafMonocle") && d.TiledCount() == 1 {
+		d.layout = monocle
+	}
 
-			rect := d.m.rectangle
-			var gap int
-			if d.e.Bool("GaplessMonocle") && d.layout == monocle {
-				gap = 0
-			} else {
-				gap = d.windowGap
-			}
+	m := d.loc.m
+	rect := m.rectangle
+	var gap int
+	if e.Bool("GaplessMonocle") && d.layout == monocle {
+		gap = 0
+	} else {
+		gap = d.windowGap
+	}
 
-			rect.X += int16(d.m.pad[Left] + d.pad[Left] + gap)
-			rect.Y += int16(d.m.pad[Up] + d.pad[Up] + gap)
-			rect.Width -= uint16(d.m.pad[Left] + d.pad[Left] + d.pad[Right] + d.m.pad[Right] + gap)
-			rect.Height -= uint16(d.m.pad[Up] + d.pad[Up] + d.pad[Down] + d.m.pad[Down] + gap)
-			//ApplyLayout(d.m, d, d.root, rect, rect)
+	mp := m.pad
+	dp := d.pad
 
-			d.layout = setLayout
-		}
-	*/
+	rect.X += int16(mp.Get(Left) + dp.Get(Left) + gap)
+	rect.Y += int16(dp.Get(Up) + dp.Get(Up) + gap)
+	rect.Width -= uint16(mp.Get(Left) + dp.Get(Left) + dp.Get(Right) + mp.Get(Right) + gap)
+	rect.Height -= uint16(mp.Get(Up) + dp.Get(Up) + dp.Get(Down) + mp.Get(Down) + gap)
+
+	//ApplyLayout(d.m, d, d.root, rect, rect)
+
+	d.layout = setLayout
 }
 
 func (d *Desktop) TiledCount() int {
 	var cnt int
 	for _, c := range d.clients {
-		if c.IsTiled() {
+		if c.Tiled() {
 			cnt++
 		}
 	}
@@ -256,56 +254,25 @@ func (d *Desktop) Change(l Layout) {
 	d.Arrange()
 }
 
-//func (d *Desktop) Transfer(src, dst *Monitor) {
-/*if src != dst {
-	prev := d.prev
-	next := d.next
-	dsrc := src.Desktops
+func (d *Desktop) Transfer(to *Monitor) {
+	cds := d.loc.m.desktops
+	cds.Pop(d)
 
-	if d.prev == nil {
-		dsrc.Desktop = d.next
-	} else {
-		prev.next = next
-		next.prev = prev
-	}
+	//adjust cds focus etc
 
-	if d.IsCurrent() {
-		d.UnFocus()
-		last := dsrc.Last()
-		dsrc.SetCurrent(last)
-	}
+	nds := to.desktops
+	nds = append(nds, d)
 
-	d.m = dst
-	dst.Desktops.Tail().next = d
-	d.prev = dst.Desktops.Tail()
-
-	n := d.root.rightExtrema()
-	for n != nil {
-		dst.Translate(src, n.Client)
-		n = nextLeaf(n, d.root)
-	}
-
-	d.Arrange()
-
-	d.e.history.transferDesktop(dst, d)
-
+	d.loc.m = to
+	//adjust everything to new monitor
 	//ewmh_update_wm_Desktops();
 	//ewmh_update_Desktop_names();
 	//ewmh_update_current_Desktop();
 }
-*/
-//}
 
-//func (d *Desktop) Closest(cy Cycle, sel DesktopSelect) *Desktop {
-//curr := d.Pop(cy)
-//for curr != d {
-//	if MatchDesktop(&curr.loc, &curr.loc, sel) {
-//		return curr
-//	}
-//	curr = curr.Pop(cy)
-//}
-//return nil
-//}
+func (d *Desktop) Neighbor(sel Selector) *Desktop {
+	return nil
+}
 
 type desktopStatus int
 
@@ -335,8 +302,8 @@ var stringDesktopUrgency map[string]desktopUrgency = map[string]desktopUrgency{
 	"off": duOff,
 }
 
-func locateDesktop(e *Euclid, loc coordinate, sel ...Selector) (coordinate, bool) {
-	return loc, false
+func selectDesktop(e *Euclid, sel ...Selector) bool {
+	return false
 }
 
 /*

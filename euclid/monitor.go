@@ -182,11 +182,7 @@ func (ms Monitors) Add(e *Euclid, x XHandle, r xproto.Rectangle) *Monitor {
 	return m
 }
 
-func (ms *Monitors) Locate(loc coordinate, sel ...Selector) bool {
-	return false
-}
-
-func (ms Monitors) Match(ref, loc *coordinate, sel ...Selector) bool {
+func (ms *Monitors) Select(sel ...Selector) bool {
 	return false
 }
 
@@ -280,6 +276,21 @@ func (ms Monitors) Number() int {
 	return len(ms)
 }
 
+type Pad map[Direction]int
+
+func DefaultPad() Pad {
+	ret := make(Pad)
+	ret[Up], ret[Down], ret[Left], ret[Right] = 0, 0, 0, 0
+	return ret
+}
+
+func (p Pad) Get(d Direction) int {
+	if v, ok := p[d]; ok {
+		return v
+	}
+	return 0
+}
+
 type Monitor struct {
 	loc       coordinate
 	id        randr.Output
@@ -289,9 +300,9 @@ type Monitor struct {
 	wired     bool
 	pad       Pad
 	stickys   int
+	primary   bool
 	focused   bool
 	last      bool
-	primary   bool
 	desktops  Desktops
 }
 
@@ -304,7 +315,8 @@ func newMonitor(e *Euclid, n string, w *Window, r xproto.Rectangle) *Monitor {
 		wired:     true,
 	}
 	m.loc = Coordinate(e, m, nil, nil)
-	m.desktops = NewDesktops(e, m)
+	m.desktops = NewDesktops()
+	m.desktops.Add(e, m, "")
 	return m
 }
 
@@ -448,7 +460,7 @@ func (m *Monitor) Delete(c *xgb.Conn) {
 	m = nil
 }
 
-func locateMonitor(e *Euclid, loc coordinate, sel ...Selector) (coordinate, bool) {
+func selectMonitor(e *Euclid, loc coordinate, sel ...Selector) (coordinate, bool) {
 	return loc, false
 }
 

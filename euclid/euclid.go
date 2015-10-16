@@ -13,6 +13,7 @@ type Euclid struct {
 	*Settings
 	*loop
 	monitors Monitors
+	pending  []Rule
 	//history  *History
 	//rules   *Rule
 	//pending *Pending
@@ -28,6 +29,7 @@ func New() *Euclid {
 	}
 	e.XHandle = hndl
 	e.monitors = NewMonitors(e)
+	e.pending = make([]Rule, 0)
 	return e
 }
 
