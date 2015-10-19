@@ -196,11 +196,12 @@ func (ms Monitors) fromPoint(p xproto.Point) *Monitor {
 }
 
 func (ms Monitors) fromClient(c *Client) *Monitor {
-	/*p := xproto.Point{c.fRectangle.X, c.fRectangle.Y}
+	p := xproto.Point{c.fRectangle.X, c.fRectangle.Y}
 	nearest := ms.fromPoint(p)
 	if nearest == nil {
-		x := ((c.fRectangle.X + int16(c.fRectangle.Width)) / 2)
-		y := ((c.fRectangle.Y + int16(c.fRectangle.Height)) / 2)
+		cr := c.floater.rectangle
+		x := ((cr.X + int16(cr.Width)) / 2)
+		y := ((cr.Y + int16(cr.Height)) / 2)
 		dmin := MAXINT
 		for _, m := range ms {
 			r := m.rectangle
@@ -211,8 +212,7 @@ func (ms Monitors) fromClient(c *Client) *Monitor {
 			}
 		}
 	}
-	return nearest*/
-	return nil
+	return nearest
 }
 
 func (ms Monitors) fromId(id randr.Output) *Monitor {
@@ -296,7 +296,7 @@ type Monitor struct {
 	id        randr.Output
 	name      string
 	rectangle xproto.Rectangle
-	root      *Window
+	root      *window
 	wired     bool
 	pad       Pad
 	stickys   int
@@ -306,7 +306,7 @@ type Monitor struct {
 	desktops  Desktops
 }
 
-func newMonitor(e *Euclid, n string, w *Window, r xproto.Rectangle) *Monitor {
+func newMonitor(e *Euclid, n string, w *window, r xproto.Rectangle) *Monitor {
 	m := &Monitor{
 		name:      n,
 		root:      w,

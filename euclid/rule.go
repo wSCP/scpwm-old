@@ -8,21 +8,15 @@ import (
 type ruleCause int
 
 const (
-	generalName ruleCause = iota
-	className
+	className ruleCause = iota
 	instanceName
-	monitorDescription
-	desktopDescription
 	clientDescription
 	windowDescription
 )
 
 var stringRuleCause map[string]ruleCause = map[string]ruleCause{
-	"general":  generalName,
 	"class":    className,
 	"instance": instanceName,
-	"monitor":  monitorDescription,
-	"desktop":  desktopDescription,
 	"client":   clientDescription,
 	"window":   windowDescription,
 }
@@ -33,10 +27,6 @@ func (r ruleCause) String() string {
 		return "class"
 	case instanceName:
 		return "instance"
-	case monitorDescription:
-		return "monitor"
-	case desktopDescription:
-		return "desktop"
 	case clientDescription:
 		return "client"
 	case windowDescription:
@@ -64,25 +54,29 @@ const (
 	isFollowed
 	isManaged
 	isFocused
+	monitorDescription
+	desktopDescription
 )
 
 var stringRuleEffect map[string]ruleEffect = map[string]ruleEffect{
-	"direction":   setSplitDirection, //string
-	"ratio":       setSplitRatio,     //float64
-	"minwidth":    minWidth,          //uint16
-	"maxwidth":    maxWidth,          //uint16
-	"minheight":   minHeight,         //uint16
-	"maxheight":   maxHeight,         //uint16
-	"pseudotiled": isPseudoTiled,     //bool
-	"floating":    isFloating,        //bool
-	"lock":        isLocked,          //bool
-	"sticky":      isSticky,          //bool
-	"private":     isPrivate,         //bool
-	"bordered":    isBordered,        //bool
-	"centered":    isCentered,        //bool
-	"follow":      isFollowed,        //bool
-	"manage":      isManaged,         //bool
-	"focus":       isFocused,         //bool
+	"direction":   setSplitDirection,  //string
+	"ratio":       setSplitRatio,      //float64
+	"minwidth":    minWidth,           //uint16
+	"maxwidth":    maxWidth,           //uint16
+	"minheight":   minHeight,          //uint16
+	"maxheight":   maxHeight,          //uint16
+	"pseudotiled": isPseudoTiled,      //bool
+	"floating":    isFloating,         //bool
+	"lock":        isLocked,           //bool
+	"sticky":      isSticky,           //bool
+	"private":     isPrivate,          //bool
+	"bordered":    isBordered,         //bool
+	"centered":    isCentered,         //bool
+	"follow":      isFollowed,         //bool
+	"manage":      isManaged,          //bool
+	"focus":       isFocused,          //bool
+	"monitor":     monitorDescription, //string
+	"desktop":     desktopDescription, //string
 }
 
 func (r ruleEffect) String() string {
@@ -113,12 +107,14 @@ func (r ruleEffect) String() string {
 		return "bordered"
 	case isCentered:
 		return "centered"
-	case isFollowed:
-		return "follows"
 	case isManaged:
 		return "managed"
 	case isFocused:
 		return "focused"
+	case monitorDescription:
+		return "monitor"
+	case desktopDescription:
+		return "desktop"
 	}
 	return ""
 }

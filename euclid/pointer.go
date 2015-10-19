@@ -381,14 +381,12 @@ func (p *pointer) Track(x, y int16) {
 }
 
 type MotionRecorder struct {
-	root xproto.Window
-	*Window
+	*window
 }
 
 func NewMotionRecorder(conn *xgb.Conn, r, w xproto.Window) *MotionRecorder {
 	return &MotionRecorder{
-		root:   r,
-		Window: &Window{conn, w, r, 0, 0},
+		window: &window{conn, w, r},
 	}
 }
 

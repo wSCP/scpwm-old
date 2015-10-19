@@ -16,6 +16,38 @@ func (cs Clients) Number() int {
 	return len(cs)
 }
 
+type stack interface {
+	min() int
+	max() int
+	reset() int
+}
+
+func (cs Clients) min() int {
+	var ret int
+	for _, c := range cs {
+		if c.stack <= ret {
+			ret = c.stack
+		}
+	}
+	return ret
+}
+
+func (cs Clients) max() int {
+	var ret int
+	for _, c := range cs {
+		if c.stack <= ret {
+			ret = c.stack
+		}
+	}
+	return ret
+}
+
+func (cs Clients) reset() int {
+	for i, c := range cs {
+		c.stack = i
+	}
+}
+
 type Client struct {
 	loc      coordinate
 	class    string
@@ -149,12 +181,28 @@ func (c *Client) Adjacent(o *Client, d Direction) bool {
 	return false
 }
 
-func (c *Client) SideHandle(dir Direction, p xproto.Point) {
-	//void get_side_handle(client_t *c, direction_t dir, xcb_point_t *pt)
+func (c *Client) SideHandle(dir Direction) *xproto.Point {
+	rect := c.Rectangle()
+	var p xproto.Point
+	switch dir {
+	case Right:
+		p.X = rect.X + int16(rect.Width)
+		p.Y = rect.Y + (int16(rect.Height) / 2)
+	case Down:
+		p.X = rect.X + (int16(rect.Width) / 2)
+		p.Y = rect.Y + int16(rect.Height)
+	case Left:
+		p.X = rect.X
+		p.Y = rect.Y + (int16(rect.Height) / 2)
+	case Up:
+		p.X = rect.X + (int16(rect.Width) / 2)
+		p.Y = rect.Y
+	}
+	return p
 }
 
 func (c *Client) DrawBorder(focusedWindow, focusedMonitor bool) {
-	//void Window_draw_border(client_t *n, bool focused_Window, bool focused_monitor);
+	//void window_draw_border(client_t *n, bool focused_window, bool focused_monitor);
 }
 
 func (c *Client) BorderColor(focusedWindow, focusedMonitor bool) uint32 {
@@ -235,15 +283,13 @@ func (c *Client) Set(cs ClientState, v bool) {
 }
 
 func (c *Client) setFullScreen(v bool) {
-	//if n != nil || n.Client.fullscreen != v {
-	//n.Client.fullscreen = v
-	//if v {
-	//ewmh_wm_state_add(c, ewmh->_NET_WM_STATE_FULLSCREEN);
-	//} else {
-	//ewmh_wm_state_remove(c, ewmh->_NET_WM_STATE_FULLSCREEN);
-	//stack(n, STACK_ABOVE);
-	//}
-	//}
+	c.fullscreen = v
+	if v {
+		//ewmh_wm_state_add(c, ewmh->_NET_WM_STATE_FULLSCREEN);
+	} else {
+		//ewmh_wm_state_remove(c, ewmh->_NET_WM_STATE_FULLSCREEN);
+		//stack(n, STACK_ABOVE);
+	}
 }
 
 func (c *Client) setPseudoTiled(v bool) {

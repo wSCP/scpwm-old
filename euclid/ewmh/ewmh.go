@@ -4,7 +4,7 @@ import (
 	"github.com/BurntSushi/xgb"
 	"github.com/BurntSushi/xgb/xproto"
 
-	"scpwm.local/scpwm/euclid/atomic"
+	"github.com/thrisp/scpwm/euclid/atomic"
 )
 
 type EWMH interface {

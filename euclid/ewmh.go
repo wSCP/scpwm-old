@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/BurntSushi/xgb/xproto"
-	"scpwm.local/scpwm/euclid/ewmh"
+	"github.com/thrisp/scpwm/euclid/ewmh"
 )
 
 type Ewmh interface {

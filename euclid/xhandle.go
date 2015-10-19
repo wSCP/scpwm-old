@@ -9,8 +9,8 @@ import (
 	"github.com/BurntSushi/xgb/xproto"
 	"github.com/davecgh/go-spew/spew"
 
-	"scpwm.local/scpwm/euclid/atomic"
-	"scpwm.local/scpwm/euclid/ewmh"
+	"github.com/thrisp/scpwm/euclid/atomic"
+	"github.com/thrisp/scpwm/euclid/ewmh"
 )
 
 var (
@@ -24,7 +24,6 @@ type Event struct {
 }
 
 type XHandle interface {
-	Pointer() Pointer
 	Connectr
 	Informr
 	Eventr
@@ -32,6 +31,7 @@ type XHandle interface {
 	Focusr
 	atomic.Atomic
 	Ewmh
+	Pointer
 }
 
 type Connectr interface {
@@ -60,11 +60,11 @@ type Quitr interface {
 }
 
 type Windowr interface {
-	New() *Window
-	Make(xproto.Window) *Window
+	New() *window
+	Make(xproto.Window) *window
 	Schedule(*Euclid, xproto.Window) bool
-	Manage(*Euclid, *Window, ...Rule) bool
-	Unmanage(*Window)
+	Manage(*Euclid, *window, ...Rule) bool
+	Unmanage(*window)
 	AdoptOrphans()
 }
 
@@ -80,13 +80,13 @@ type xhandle struct {
 	root    xproto.Window
 	meta    xproto.Window
 	motion  xproto.Window
-	pointer Pointer
 	Events  []Event
 	EvtsLck *sync.RWMutex
 	quit    bool
 	Windowr
 	atomic.Atomic
 	Ewmh
+	Pointer
 }
 
 func mkMeta(s *xproto.ScreenInfo, c *xgb.Conn) (xproto.Window, error) {
@@ -167,7 +167,7 @@ func NewXHandle(display string, ewhm []string) (*xhandle, error) {
 	}
 
 	mr := NewMotionRecorder(h.conn, h.root, h.motion)
-	h.pointer = NewPointer(mr)
+	h.Pointer = NewPointer(mr)
 
 	h.Windowr = NewWindowr(h.conn, h.root)
 
@@ -209,10 +209,6 @@ func (h *xhandle) Meta() xproto.Window {
 
 func (h *xhandle) Motion() xproto.Window {
 	return h.motion
-}
-
-func (h *xhandle) Pointer() Pointer {
-	return h.pointer
 }
 
 func (h *xhandle) Empty() bool {
@@ -390,7 +386,18 @@ func (w *windowr) Unmanage(win *window) {
 	//void unmanage_Window(xcb_Window_t win);
 }
 
-func (w *windowr) AdoptOrphans() {}
+func (w *windowr) AdoptOrphans(e *Euclid) {
+	if qtr := xproto.QueryTree(w.conn, w.root).Reply(); qtr != nil {
+		//int len = xcb_query_tree_children_length(qtr);
+		//xcb_window_t *wins = xcb_query_tree_children(qtr);
+		//for (int i = 0; i < len; i++) {
+		//	uint32_t idx;
+		//	xcb_window_t win = wins[i];
+		//	if (xcb_ewmh_get_wm_desktop_reply(ewmh, xcb_ewmh_get_wm_desktop(ewmh, win), &idx, NULL) == 1)
+		//		schedule_window(win);
+		//}
+	}
+}
 
 func ClientEvent(c *xgb.Conn, root, w xproto.Window, a xproto.Atom, data ...interface{}) error {
 	evMask := (xproto.EventMaskSubstructureNotify | xproto.EventMaskSubstructureRedirect)
