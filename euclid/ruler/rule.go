@@ -1,9 +1,11 @@
-package main
+package ruler
 
 import (
 	"fmt"
 	"strconv"
 )
+
+//go:generate stringer -type=ruleCause
 
 type ruleCause int
 
@@ -124,10 +126,15 @@ type Rule interface {
 	Key() string
 	Effect() ruleEffect
 	Value() string
+	Reuse() bool
+	String() string
+	Implementr
+}
+
+type Implementr interface {
 	Uint16() uint16
 	Float() float64
 	Bool() bool
-	Reuse() bool
 }
 
 type rule struct {
@@ -138,7 +145,7 @@ type rule struct {
 	reuse  bool
 }
 
-func newRule(cause, effect, key, value string, reuse bool) Rule {
+func newRule(cause, key, effect, value string, reuse bool) Rule {
 	if rc, ok := stringRuleCause[cause]; ok {
 		if re, ok := stringRuleEffect[effect]; ok {
 			return &rule{
@@ -171,7 +178,7 @@ func (r *rule) Value() string {
 
 func (r *rule) String() string {
 	return fmt.Sprintf(
-		"(%s : %s) (%s : %s)  %t",
+		"%s %s %s %s %t",
 		r.cause,
 		r.key,
 		r.effect,
@@ -204,15 +211,3 @@ func (r *rule) Bool() bool {
 func (r *rule) Reuse() bool {
 	return r.reuse
 }
-
-//var defaultWindowRuleset = []Rule{
-//	newRule("window", "manage", "true", true),
-//	newRule("window", "focus", "true", true),
-//	newRule("window", "bordered", "true", true),
-//}
-
-//func (e *Euclid) applyRules(win *Window, csq *Consequence) {}
-
-//func (e *Euclid) scheduleRules(win *Window, csq *Consequence) bool {
-//	return false
-//}

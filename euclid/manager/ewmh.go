@@ -1,5 +1,6 @@
-package main
+package manager
 
+/*
 import (
 	"github.com/BurntSushi/xgb/xproto"
 	"github.com/thrisp/scpwm/euclid/ewmh"
@@ -117,8 +118,8 @@ type WmState interface {
 	Set(string, xproto.Window, xproto.Window)
 	UpdateActiveWindow()
 	UpdateClientList()
-	Add(*Client, xproto.Atom) bool
-	Remove(*Client, xproto.Atom) bool
+	AddClient(*Client, xproto.Atom) bool
+	RemoveClient(*Client, xproto.Atom) bool
 }
 
 type wmState struct {
@@ -166,8 +167,10 @@ func (w *wmState) UpdateClientList() {
 	//xcb_ewmh_set_client_list_stacking(ewmh, default_screen, num_clients, wins);
 }
 
+const MAXSTATE = int(4)
+
 //bool ewmh_wm_state_add(client_t *c, xcb_atom_t state)
-func (w *wmState) Add(c *Client, state xproto.Atom) bool {
+func (w *wmState) AddClient(c *Client, state xproto.Atom) bool {
 	if c.numStates <= MAXSTATE {
 		//for (int i = 0; i < c->num_states; i++)
 		//	if (c->wm_state[i] == state)
@@ -180,7 +183,7 @@ func (w *wmState) Add(c *Client, state xproto.Atom) bool {
 }
 
 //bool ewmh_wm_state_remove(client_t *c, xcb_atom_t state)
-func (w *wmState) Remove(c *Client, state xproto.Atom) bool {
+func (w *wmState) RemoveClient(c *Client, state xproto.Atom) bool {
 	//for (int i = 0; i < c->num_states; i++)
 	//	if (c->wm_state[i] == state)
 	//	{
@@ -192,3 +195,4 @@ func (w *wmState) Remove(c *Client, state xproto.Atom) bool {
 	//	}
 	return false
 }
+*/

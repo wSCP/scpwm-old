@@ -1,5 +1,6 @@
-package main
+package handler
 
+/*
 import (
 	"github.com/BurntSushi/xgb"
 	"github.com/BurntSushi/xgb/xproto"
@@ -68,7 +69,7 @@ func (p *pointer) Center(r xproto.Rectangle) {
 	cx := r.X + int16(r.Width/2)
 	cy := r.Y + int16(r.Height/2)
 	p.Lower()
-	c := p.Window.Conn
+	c := p.window.Conn
 	xproto.WarpPointer(c, xproto.WindowNone, p.root, 0, 0, 0, 0, cx, cy)
 	p.Raise()
 }
@@ -98,128 +99,128 @@ func (p *pointer) Grab(a PointerAction) {
 
 	p.query(win, &pos)
 
-	var loc coordinate
+	//var loc coordinate
 
-	if _, exists := locateWindow(p.loc.e, win.Window); exists {
-		//var c *Client
-		//p.position = pos
-		//p.action = a
-		//c = loc.n.Client
-		//p.monitor = loc.m
-		//p.desktop = loc.d
-		//p.node = loc.n
-		//p.client = c
-		//p.window = c.Window
-		//p.hFence = nil
-		//p.vFence = nil
+	//if _, exists := locateWindow(p.loc.e, win.Window); exists {
+	//var c *Client
+	//p.position = pos
+	//p.action = a
+	//c = loc.n.Client
+	//p.monitor = loc.m
+	//p.desktop = loc.d
+	//p.node = loc.n
+	//p.client = c
+	//p.window = c.Window
+	//p.hFence = nil
+	//p.vFence = nil
 
-		//switch a {
-		//case AFocus:
-		//	if (loc.node != mon->desk->focus) {
-		//		bool backup = pointer_follows_monitor;
-		//		pointer_follows_monitor = false;
-		//		focus_node(loc.monitor, loc.desktop, loc.node);
-		//		pointer_follows_monitor = backup;
-		//	} else if (focus_follows_pointer) {
-		//		stack(loc.node, STACK_ABOVE);
-		//	}
-		//	frozen_pointer->action = ACTION_NONE;
-		//	break;
-		//case AMove, AResizeSide, AResizeCorner:
-		//if (is_floating(c)) {
-		//	frozen_pointer->rectangle = c->floating_rectangle;
-		//	frozen_pointer->is_tiled = false;
-		//} else if (is_tiled(c)) {
-		//	frozen_pointer->rectangle = c->tiled_rectangle;
-		//	frozen_pointer->is_tiled = (pac == ACTION_MOVE || !c->pseudo_tiled);
-		//} else {
-		//	frozen_pointer->action = ACTION_NONE;
-		//	return;
-		//}
-		//if (pac == ACTION_RESIZE_SIDE) {
-		//	float W = frozen_pointer->rectangle.width;
-		//	float H = frozen_pointer->rectangle.height;
-		//	float ratio = W / H;
-		//	float x = pos.x - frozen_pointer->rectangle.x;
-		//	float y = pos.y - frozen_pointer->rectangle.y;
-		//	float diag_a = ratio * y;
-		//	float diag_b = W - diag_a;
-		//	if (x < diag_a) {
-		//		if (x < diag_b)
-		//			frozen_pointer->side = SIDE_LEFT;
-		//		else
-		//			frozen_pointer->side = SIDE_BOTTOM;
-		//	} else {
-		//		if (x < diag_b)
-		//			frozen_pointer->side = SIDE_TOP;
-		//		else
-		//			frozen_pointer->side = SIDE_RIGHT;
-		//	}
-		//} else if (pac == ACTION_RESIZE_CORNER) {
-		//	int16_t mid_x = frozen_pointer->rectangle.x + (frozen_pointer->rectangle.width / 2);
-		//	int16_t mid_y = frozen_pointer->rectangle.y + (frozen_pointer->rectangle.height / 2);
-		//	if (pos.x > mid_x) {
-		//		if (pos.y > mid_y)
-		//			frozen_pointer->corner = CORNER_BOTTOM_RIGHT;
-		//		else
-		//			frozen_pointer->corner = CORNER_TOP_RIGHT;
-		//	} else {
-		//		if (pos.y > mid_y)
-		//			frozen_pointer->corner = CORNER_BOTTOM_LEFT;
-		//		else
-		//			frozen_pointer->corner = CORNER_TOP_LEFT;
-		//	}
-		//}
-		//if (frozen_pointer->is_tiled) {
-		//	if (pac == ACTION_RESIZE_SIDE) {
-		//		switch (frozen_pointer->side) {
-		//			case SIDE_TOP:
-		//				frozen_pointer->horizontal_fence = find_fence(loc.node, DIR_UP);
-		//				break;
-		//			case SIDE_RIGHT:
-		//				frozen_pointer->vertical_fence = find_fence(loc.node, DIR_RIGHT);
-		//				break;
-		//			case SIDE_BOTTOM:
-		//				frozen_pointer->horizontal_fence = find_fence(loc.node, DIR_DOWN);
-		//				break;
-		//			case SIDE_LEFT:
-		//				frozen_pointer->vertical_fence = find_fence(loc.node, DIR_LEFT);
-		//				break;
-		//		}
-		//	} else if (pac == ACTION_RESIZE_CORNER) {
-		//		switch (frozen_pointer->corner) {
-		//			case CORNER_TOP_LEFT:
-		///				frozen_pointer->horizontal_fence = find_fence(loc.node, DIR_UP);
-		//				frozen_pointer->vertical_fence = find_fence(loc.node, DIR_LEFT);
-		//				break;
-		//			case CORNER_TOP_RIGHT:
-		//				frozen_pointer->horizontal_fence = find_fence(loc.node, DIR_UP);
-		//				frozen_pointer->vertical_fence = find_fence(loc.node, DIR_RIGHT);
-		//				break;
-		//			case CORNER_BOTTOM_RIGHT:
-		//				frozen_pointer->horizontal_fence = find_fence(loc.node, DIR_DOWN);
-		//				frozen_pointer->vertical_fence = find_fence(loc.node, DIR_RIGHT);
-		//				break;
-		//			case CORNER_BOTTOM_LEFT:
-		//				frozen_pointer->horizontal_fence = find_fence(loc.node, DIR_DOWN);
-		//				frozen_pointer->vertical_fence = find_fence(loc.node, DIR_LEFT);
-		//				break;
-		//		}
-		//	}
-		//	if (frozen_pointer->horizontal_fence != NULL)
-		//		frozen_pointer->horizontal_ratio = frozen_pointer->horizontal_fence->split_ratio;
-		//	if (frozen_pointer->vertical_fence != NULL)
-		//		frozen_pointer->vertical_ratio = frozen_pointer->vertical_fence->split_ratio;
-		//}
-		//}
-	} else {
-		//if a == AFocus {
-		//	monitor_t *m = monitor_from_point(pos);
-		//	if (m != NULL && m != mon)
-		//		focus_node(m, m->desk, m->desk->focus);
-		//}
-		//p.action = NoAction
-	}
+	//switch a {
+	//case AFocus:
+	//	if (loc.node != mon->desk->focus) {
+	//		bool backup = pointer_follows_monitor;
+	//		pointer_follows_monitor = false;
+	//		focus_node(loc.monitor, loc.desktop, loc.node);
+	//		pointer_follows_monitor = backup;
+	//	} else if (focus_follows_pointer) {
+	//		stack(loc.node, STACK_ABOVE);
+	//	}
+	//	frozen_pointer->action = ACTION_NONE;
+	//	break;
+	//case AMove, AResizeSide, AResizeCorner:
+	//if (is_floating(c)) {
+	//	frozen_pointer->rectangle = c->floating_rectangle;
+	//	frozen_pointer->is_tiled = false;
+	//} else if (is_tiled(c)) {
+	//	frozen_pointer->rectangle = c->tiled_rectangle;
+	//	frozen_pointer->is_tiled = (pac == ACTION_MOVE || !c->pseudo_tiled);
+	//} else {
+	//	frozen_pointer->action = ACTION_NONE;
+	//	return;
+	//}
+	//if (pac == ACTION_RESIZE_SIDE) {
+	//	float W = frozen_pointer->rectangle.width;
+	//	float H = frozen_pointer->rectangle.height;
+	//	float ratio = W / H;
+	//	float x = pos.x - frozen_pointer->rectangle.x;
+	//	float y = pos.y - frozen_pointer->rectangle.y;
+	//	float diag_a = ratio * y;
+	//	float diag_b = W - diag_a;
+	//	if (x < diag_a) {
+	//		if (x < diag_b)
+	//			frozen_pointer->side = SIDE_LEFT;
+	//		else
+	//			frozen_pointer->side = SIDE_BOTTOM;
+	//	} else {
+	//		if (x < diag_b)
+	//			frozen_pointer->side = SIDE_TOP;
+	//		else
+	//			frozen_pointer->side = SIDE_RIGHT;
+	//	}
+	//} else if (pac == ACTION_RESIZE_CORNER) {
+	//	int16_t mid_x = frozen_pointer->rectangle.x + (frozen_pointer->rectangle.width / 2);
+	//	int16_t mid_y = frozen_pointer->rectangle.y + (frozen_pointer->rectangle.height / 2);
+	//	if (pos.x > mid_x) {
+	//		if (pos.y > mid_y)
+	//			frozen_pointer->corner = CORNER_BOTTOM_RIGHT;
+	//		else
+	//			frozen_pointer->corner = CORNER_TOP_RIGHT;
+	//	} else {
+	//		if (pos.y > mid_y)
+	//			frozen_pointer->corner = CORNER_BOTTOM_LEFT;
+	//		else
+	//			frozen_pointer->corner = CORNER_TOP_LEFT;
+	//	}
+	//}
+	//if (frozen_pointer->is_tiled) {
+	//	if (pac == ACTION_RESIZE_SIDE) {
+	//		switch (frozen_pointer->side) {
+	//			case SIDE_TOP:
+	//				frozen_pointer->horizontal_fence = find_fence(loc.node, DIR_UP);
+	//				break;
+	//			case SIDE_RIGHT:
+	//				frozen_pointer->vertical_fence = find_fence(loc.node, DIR_RIGHT);
+	//				break;
+	//			case SIDE_BOTTOM:
+	//				frozen_pointer->horizontal_fence = find_fence(loc.node, DIR_DOWN);
+	//				break;
+	//			case SIDE_LEFT:
+	//				frozen_pointer->vertical_fence = find_fence(loc.node, DIR_LEFT);
+	//				break;
+	//		}
+	//	} else if (pac == ACTION_RESIZE_CORNER) {
+	//		switch (frozen_pointer->corner) {
+	//			case CORNER_TOP_LEFT:
+	///				frozen_pointer->horizontal_fence = find_fence(loc.node, DIR_UP);
+	//				frozen_pointer->vertical_fence = find_fence(loc.node, DIR_LEFT);
+	//				break;
+	//			case CORNER_TOP_RIGHT:
+	//				frozen_pointer->horizontal_fence = find_fence(loc.node, DIR_UP);
+	//				frozen_pointer->vertical_fence = find_fence(loc.node, DIR_RIGHT);
+	//				break;
+	//			case CORNER_BOTTOM_RIGHT:
+	//				frozen_pointer->horizontal_fence = find_fence(loc.node, DIR_DOWN);
+	//				frozen_pointer->vertical_fence = find_fence(loc.node, DIR_RIGHT);
+	//				break;
+	//			case CORNER_BOTTOM_LEFT:
+	//				frozen_pointer->horizontal_fence = find_fence(loc.node, DIR_DOWN);
+	//				frozen_pointer->vertical_fence = find_fence(loc.node, DIR_LEFT);
+	//				break;
+	//		}
+	//	}
+	//	if (frozen_pointer->horizontal_fence != NULL)
+	//		frozen_pointer->horizontal_ratio = frozen_pointer->horizontal_fence->split_ratio;
+	//	if (frozen_pointer->vertical_fence != NULL)
+	//		frozen_pointer->vertical_ratio = frozen_pointer->vertical_fence->split_ratio;
+	//}
+	//}
+	//} else {
+	//if a == AFocus {
+	//	monitor_t *m = monitor_from_point(pos);
+	//	if (m != NULL && m != mon)
+	//		focus_node(m, m->desk, m->desk->focus);
+	//}
+	//p.action = NoAction
+	//}
 }
 
 func (p *pointer) Ungrab() {
@@ -381,12 +382,12 @@ func (p *pointer) Track(x, y int16) {
 }
 
 type MotionRecorder struct {
-	*window
+	*Window
 }
 
 func NewMotionRecorder(conn *xgb.Conn, r, w xproto.Window) *MotionRecorder {
 	return &MotionRecorder{
-		window: &window{conn, w, r},
+		Window: &Window{conn, w, r},
 	}
 }
 
@@ -406,3 +407,4 @@ func (m *MotionRecorder) update() {
 		m.Resize(geo.Width, geo.Height)
 	}
 }
+*/

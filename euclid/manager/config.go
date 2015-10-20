@@ -1,9 +1,8 @@
-package main
+package manager
 
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -15,18 +14,7 @@ const (
 	LINECONTINUE = byte('\\')
 )
 
-func defaultConfigPath() string {
-	var pth string
-	ch := os.Getenv(ConfigHomeEnv)
-	if ch != "" {
-		pth = fmt.Sprintf("%s/%s", ch, ConfigFile)
-	} else {
-		pth = fmt.Sprintf("%s/%s/%s", os.Getenv("HOME"), ".config", ConfigFile)
-	}
-	return pth
-}
-
-func (e *Euclid) LoadConfig(f string) error {
+func (m *Manager) LoadConfig(f string) error {
 	file, err := os.Open(f)
 	if err != nil {
 		return err

@@ -1,19 +1,12 @@
-package main
+package commander
 
 import (
 	"errors"
 	"fmt"
 	"strings"
-)
 
-type msgResponse []byte
-
-var (
-	mSUCCESS msgResponse = []byte("success")
-	mSYNTAX  msgResponse = []byte("syntax")
-	mUNKNOWN msgResponse = []byte("unknown")
-	mLENGTH  msgResponse = []byte("length")
-	mFAILURE msgResponse = []byte("failure")
+	"github.com/thrisp/scpwm/euclid/handler"
+	"github.com/thrisp/scpwm/euclid/settings"
 )
 
 var (
@@ -23,28 +16,19 @@ var (
 	LengthError  = Xrror("inappropriate length message: `%d : %s`, message must be longer than 1 word and shorter than 15").Out
 )
 
-func (e *Euclid) processMsg(msg []byte, comm chan string) msgResponse {
-	cmd := NewCommand(e, comm, msg)
-	return cmd.process(e)
-}
-
 type Command struct {
-	e   *Euclid
-	com chan string
 	pri string
 	sub []string
 	cmd []string
 	raw []byte
 }
 
-func NewCommand(e *Euclid, com chan string, cmd []byte) Command {
+func NewCommand(cmd []byte) Command {
 	raw := cmd
 	in := string(cmd)
 	spl := strings.Split(in, " ")
 	pri, sub, cmds := parseCmd(spl)
 	return Command{
-		e:   e,
-		com: com,
 		pri: pri,
 		sub: sub,
 		cmd: cmds,
@@ -72,36 +56,33 @@ func parseCmd(s []string) (string, []string, []string) {
 	return pri, subcmd, s[1:]
 }
 
-func (c Command) process(e *Euclid) msgResponse {
+func (c Command) process(s *settings.Settings, h handler.Handler) (cmdrResponse, error) {
 	switch c.pri {
 	case "config":
-		return c.config(e)
+		return c.config(s, h)
 	case "monitor":
-		return c.monitor(e)
+		return c.monitor(s, h)
 	case "desktop":
-		return c.desktop(e)
+		return c.desktop(s, h)
 	case "client":
-		return c.client(e)
+		return c.client(s, h)
 	case "query":
-		return c.query(e)
+		return c.query(s, h)
 	case "rule":
-		return c.rule(e)
+		return c.rule(s, h)
 	case "pointer":
-		return c.pointer(e)
+		return c.pointer(s, h)
 	case "restore":
-		return c.restore(e)
+		return c.restore(s, h)
 	case "control":
-		return c.control(e)
+		return c.control(s, h)
 	case "quit":
-		return c.quit(e)
-	default:
-		return mUNKNOWN
-		c.com <- UnknownError(c.pri, string(c.raw)).Error()
+		return c.quit(s, h)
 	}
-	return nil
+	return mUNKNOWN, UnknownError(c.pri, string(c.raw))
 }
 
-func (c Command) config(e *Euclid) msgResponse {
+func (c Command) config(s *settings.Settings, h handler.Handler) (cmdrResponse, error) {
 	/*mon := e.Monitors.Focused()
 	desk := mon.Desktops.Current()
 	ref := Coordinates(e, mon, desk, nil)
@@ -132,57 +113,52 @@ func (c Command) config(e *Euclid) msgResponse {
 		return c.respond(mSYNTAX, SyntaxError(c.pri, c.cmdString()))
 	}
 	return c.respond(mFAILURE, FailureError(c.raw))*/
-	return mUNKNOWN
+	return mUNKNOWN, nil
 }
 
-func (c Command) monitor(e *Euclid) msgResponse {
+func (c Command) monitor(s *settings.Settings, h handler.Handler) (cmdrResponse, error) {
 	//int cmd_monitor(char **args, int num);
-	return mUNKNOWN
+	return mUNKNOWN, nil
 }
 
-func (c Command) desktop(e *Euclid) msgResponse {
+func (c Command) desktop(s *settings.Settings, h handler.Handler) (cmdrResponse, error) {
 	//int cmd_desktop(char **args, int num);
-	return mUNKNOWN
+	return mUNKNOWN, nil
 }
 
-func (c Command) client(e *Euclid) msgResponse {
+func (c Command) client(s *settings.Settings, h handler.Handler) (cmdrResponse, error) {
 	//int cmd_window(char **args, int num);
-	return mUNKNOWN
+	return mUNKNOWN, nil
 }
 
-func (c Command) query(e *Euclid) msgResponse {
+func (c Command) query(s *settings.Settings, h handler.Handler) (cmdrResponse, error) {
 	//int cmd_query(char **args, int num, FILE *rsp);
-	return mUNKNOWN
+	return mUNKNOWN, nil
 }
 
-func (c Command) rule(e *Euclid) msgResponse {
+func (c Command) rule(s *settings.Settings, h handler.Handler) (cmdrResponse, error) {
 	//int cmd_rule(char **args, int num, FILE *rsp);
-	return mUNKNOWN
+	return mUNKNOWN, nil
 }
 
-func (c Command) pointer(e *Euclid) msgResponse {
+func (c Command) pointer(s *settings.Settings, h handler.Handler) (cmdrResponse, error) {
 	//int cmd_pointer(char **args, int num);
-	return mUNKNOWN
+	return mUNKNOWN, nil
 }
 
-func (c Command) restore(e *Euclid) msgResponse {
+func (c Command) restore(s *settings.Settings, h handler.Handler) (cmdrResponse, error) {
 	//int cmd_restore(char **args, int num);
-	return mUNKNOWN
+	return mUNKNOWN, nil
 }
 
-func (c Command) control(e *Euclid) msgResponse {
+func (c Command) control(s *settings.Settings, h handler.Handler) (cmdrResponse, error) {
 	//int cmd_control(char **args, int num, FILE *rsp);
-	return mUNKNOWN
+	return mUNKNOWN, nil
 }
 
-func (c Command) quit(e *Euclid) msgResponse {
+func (c Command) quit(s *settings.Settings, h handler.Handler) (cmdrResponse, error) {
 	//int cmd_quit(char **args, int num);
-	return mFAILURE
-}
-
-func (c Command) respond(mr msgResponse, err error) msgResponse {
-	c.com <- err.Error()
-	return mr
+	return mFAILURE, nil
 }
 
 func (c Command) cmdString() string {
@@ -204,12 +180,12 @@ func (c Command) length() int {
 	return len(c.cmd)
 }
 
-func (c Command) setSetting(e *Euclid) msgResponse {
-	return c.respond(mUNKNOWN, errors.New("SET SETTING UNKNOWN"))
+func (c Command) setSetting(s *settings.Settings) (cmdrResponse, error) {
+	return mUNKNOWN, errors.New("SET SETTING UNKNOWN")
 }
 
-func (c Command) getSetting(e *Euclid) msgResponse {
-	return c.respond(mUNKNOWN, errors.New("GET SETTING UNKNOWN"))
+func (c Command) getSetting(s *settings.Settings) (cmdrResponse, error) {
+	return mUNKNOWN, errors.New("GET SETTING UNKNOWN")
 }
 
 /*

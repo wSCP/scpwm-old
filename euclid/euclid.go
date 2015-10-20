@@ -1,37 +1,23 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
 	"net"
 	"os"
+
+	"github.com/thrisp/scpwm/euclid/manager"
 )
 
-type Euclid struct {
-	XHandle
-	*Settings
-	*loop
-	monitors Monitors
-	pending  []Rule
-	//history  *History
-	//rules   *Rule
-	//pending *Pending
-}
-
-func New() *Euclid {
-	e := &Euclid{
-		Settings: DefaultSettings(),
-	}
-	hndl, err := NewXHandle("", ewmhSupported)
-	if err != nil {
-		panic(err)
-	}
-	e.XHandle = hndl
-	e.monitors = NewMonitors(e)
-	e.pending = make([]Rule, 0)
-	return e
-}
+var (
+	socketEnv     string = "SCPWM_SOCKET"
+	socketPathTpl string = "/tmp/scpwm%s_%d_%d-socket"
+	socketPath    string
+	ConfigHomeEnv string = "XDG_CONFIG_HOME"
+	ConfigFile    string = "euclid/euclidrc"
+	ConfigPath    string
+	verbose       bool
+)
 
 func defaultSocketPath() string {
 	var socketPath = os.Getenv(socketEnv)
@@ -41,60 +27,8 @@ func defaultSocketPath() string {
 	return socketPath
 }
 
-func (e *Euclid) lstn(l *net.UnixListener, loop *loop) {
-	for {
-		conn, err := l.AcceptUnix()
-		if err != nil {
-			panic(err)
-		}
-		var buf [1024]byte
-		n, err := conn.Read(buf[:])
-		if err != nil {
-			panic(err)
-		}
-		r := bytes.Trim(buf[:n], " ")
-		resp := e.processMsg(r, loop.comm)
-		conn.Write(resp)
-		conn.Close()
-	}
-}
-
-func (e *Euclid) Loop(l *net.UnixListener) *loop {
-	pre := make(chan struct{}, 0)
-	post := make(chan struct{}, 0)
-	quit := make(chan struct{}, 0)
-	com := make(chan string, 0)
-	e.loop = &loop{pre, post, quit, com}
-	go func() {
-		e.lstn(l, e.loop)
-	}()
-	go func() {
-		e.Evt(e.loop.pre, e.loop.post, e.loop.quit)
-	}()
-	return e.loop
-}
-
-type loop struct {
-	pre  chan struct{}
-	post chan struct{}
-	quit chan struct{}
-	comm chan string
-}
-
-func (e *Euclid) ToggleVisibility() {
-	//void toggle_visibility(void)
-	//visible = !visible;
-	//if (!visible)
-	//	clear_input_focus();
-	//for (monitor_t *m = mon_head; m != NULL; m = m->next)
-	//	for (node_t *n = first_extrema(m->desk->root); n != NULL; n = next_leaf(n, m->desk->root))
-	//		window_set_visibility(n->client->window, visible);
-	//if (visible)
-	//	update_input_focus();
-}
-
 func main() {
-	e := New()
+	e := manager.New()
 	sckt, err := net.ListenUnix("unix", &net.UnixAddr{socketPath, "unix"})
 	if err != nil {
 		panic(err)
@@ -103,7 +37,7 @@ func main() {
 
 	defer e.Conn().Close()
 
-	l := e.Loop(sckt)
+	l := e.Looping(sckt)
 
 	err = e.LoadConfig(ConfigPath)
 
@@ -114,18 +48,29 @@ func main() {
 EVT:
 	for {
 		select {
-		case <-l.pre:
-			<-l.post
-		case msg := <-l.comm:
+		case <-l.Pre:
+			<-l.Post
+		case msg := <-l.Comm:
 			if verbose {
 				e.Println(msg)
 			}
-		case <-l.quit:
+		case <-l.Quit:
 			break EVT
 		}
 	}
 
 	e.Println("EXITING......\n")
+}
+
+func defaultConfigPath() string {
+	var pth string
+	ch := os.Getenv(ConfigHomeEnv)
+	if ch != "" {
+		pth = fmt.Sprintf("%s/%s", ch, ConfigFile)
+	} else {
+		pth = fmt.Sprintf("%s/%s/%s", os.Getenv("HOME"), ".config", ConfigFile)
+	}
+	return pth
 }
 
 func init() {

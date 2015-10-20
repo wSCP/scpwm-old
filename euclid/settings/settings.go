@@ -1,21 +1,15 @@
-package main
+package settings
 
 import (
-	"log"
-	"os"
 	"strconv"
 	"strings"
 )
 
 type Settings struct {
-	*log.Logger
-	visible      bool
-	stickyStill  bool
-	autoRaise    bool
-	randr        bool
-	xinerama     bool
-	desktopCount int
-	s            store
+	Visible     bool
+	StickyStill bool
+	AutoRaise   bool
+	s           store
 }
 
 var NoSetting = Xrror("Setting \"%s\" is unavailable").Out
@@ -136,6 +130,22 @@ func (i *storeItem) Int64() int64 {
 	return -1
 }
 
+func isAppendable(s string, ss []string) bool {
+	for _, x := range ss {
+		if x == s {
+			return false
+		}
+	}
+	return true
+}
+
+func doAdd(s string, ss []string) []string {
+	if isAppendable(s, ss) {
+		ss = append(ss, s)
+	}
+	return ss
+}
+
 func (i *storeItem) List(l ...string) []string {
 	if len(l) > 0 {
 		list := strings.Split(i.value, ",")
@@ -147,37 +157,28 @@ func (i *storeItem) List(l ...string) []string {
 	return strings.Split(i.value, ",")
 }
 
-var (
-	verbose       bool
-	ConfigHomeEnv string = "XDG_CONFIG_HOME"
-	ConfigFile    string = "euclid/euclidrc"
-	ConfigPath    string
-	socketEnv     string = "SCPWM_SOCKET"
-	socketPathTpl string = "/tmp/scpwm%s_%d_%d-socket"
-	socketPath    string
-	ewmhSupported []string = []string{
-		"_NET_SUPPORTED",
-		"_NET_SUPPORTING_WM_CHECK",
-		"_NET_DESKTOP_NAMES",
-		"_NET_NUMBER_OF_DESKTOPS",
-		"_NET_CURRENT_DESKTOP",
-		"_NET_CLIENT_LIST",
-		"_NET_ACTIVE_WINDOW",
-		"_NET_CLOSE_WINDOW",
-		"_NET_WM_DESKTOP",
-		"_NET_WM_STATE",
-		"_NET_WM_STATE_FULLSCREEN",
-		"_NET_WM_STATE_STICKY",
-		"_NET_WM_STATE_DEMANDS_ATTENTION",
-		"_NET_WM_WINDOW_TYPE",
-		"_NET_WM_WINDOW_TYPE_DOCK",
-		"_NET_WM_WINDOW_TYPE_DESKTOP",
-		"_NET_WM_WINDOW_TYPE_NOTIFICATION",
-		"_NET_WM_WINDOW_TYPE_DIALOG",
-		"_NET_WM_WINDOW_TYPE_UTILITY",
-		"_NET_WM_WINDOW_TYPE_TOOLBAR",
-	}
-)
+var EwmhSupported []string = []string{
+	"_NET_SUPPORTED",
+	"_NET_SUPPORTING_WM_CHECK",
+	"_NET_DESKTOP_NAMES",
+	"_NET_NUMBER_OF_DESKTOPS",
+	"_NET_CURRENT_DESKTOP",
+	"_NET_CLIENT_LIST",
+	"_NET_ACTIVE_WINDOW",
+	"_NET_CLOSE_WINDOW",
+	"_NET_WM_DESKTOP",
+	"_NET_WM_STATE",
+	"_NET_WM_STATE_FULLSCREEN",
+	"_NET_WM_STATE_STICKY",
+	"_NET_WM_STATE_DEMANDS_ATTENTION",
+	"_NET_WM_WINDOW_TYPE",
+	"_NET_WM_WINDOW_TYPE_DOCK",
+	"_NET_WM_WINDOW_TYPE_DESKTOP",
+	"_NET_WM_WINDOW_TYPE_NOTIFICATION",
+	"_NET_WM_WINDOW_TYPE_DIALOG",
+	"_NET_WM_WINDOW_TYPE_UTILITY",
+	"_NET_WM_WINDOW_TYPE_TOOLBAR",
+}
 
 func DefaultSettings() *Settings {
 	s := make(store)
@@ -194,14 +195,13 @@ func DefaultSettings() *Settings {
 	s.Add("InitialPolarity", "right")
 
 	n := &storeItem{key: "ewmhSupported"}
-	n.List(ewmhSupported...)
+	n.List(EwmhSupported...)
 	s.Insert(n)
 
 	return &Settings{
-		Logger:      log.New(os.Stderr, "[EUCLID] ", log.Ldate|log.Lmicroseconds),
-		visible:     true,
-		stickyStill: true,
-		autoRaise:   true,
+		Visible:     true,
+		StickyStill: true,
+		AutoRaise:   true,
 		s:           s,
 	}
 }
