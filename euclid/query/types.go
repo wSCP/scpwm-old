@@ -181,12 +181,14 @@ type Node int
 const (
 	nodeNone Node = iota
 	nodeMonitor
+	nodeDesktop
 	nodeClient
 )
 
 var stringNode map[string]Node = map[string]Node{
 	"none":    nodeNone,
 	"monitor": nodeMonitor,
+	"desktop": nodeDesktop,
 	"client":  nodeClient,
 }
 
@@ -196,6 +198,8 @@ func (n Node) String() string {
 		return "none"
 	case nodeMonitor:
 		return "monitor"
+	case nodeDesktop:
+		return "desktop"
 	case nodeClient:
 		return "client"
 	}

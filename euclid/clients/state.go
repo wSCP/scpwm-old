@@ -1,4 +1,4 @@
-package client
+package clients
 
 import "github.com/BurntSushi/xgb/xproto"
 
@@ -34,6 +34,10 @@ type state struct {
 	sticky      bool
 	urgent      bool
 	private     bool
+}
+
+func newState() *state {
+	return &state{}
 }
 
 func (s *state) Tiled() bool {

@@ -1,4 +1,4 @@
-package client
+package clients
 
 type Bordr interface {
 	Draw(Client, bool, bool)
@@ -11,6 +11,10 @@ type bordr struct {
 	maxWidth    uint16
 	minHeight   uint16
 	maxHeight   uint16
+}
+
+func newBordr() *bordr {
+	return &bordr{}
 }
 
 func (b *bordr) Draw(c Client, focusedWindow, focusedMonitor bool) {

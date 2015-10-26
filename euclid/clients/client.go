@@ -1,20 +1,21 @@
-package client
+package clients
 
 import (
+	"github.com/BurntSushi/xgb"
 	"github.com/BurntSushi/xgb/xproto"
 
 	"github.com/thrisp/scpwm/euclid/ruler"
+	"github.com/thrisp/scpwm/euclid/windows"
 )
 
 type Client interface {
 	Class() string
 	Instance() string
 	Rectangle() xproto.Rectangle
-	Center(xproto.Rectangle)
 	Adjacent(Client, string) bool
 	SideHandle(string) *xproto.Point
 	Rules() []ruler.Rule
-	Window
+	windows.Window
 	Floatr
 	Tilr
 	State
@@ -27,13 +28,30 @@ type client struct {
 	class    string
 	instance string
 	rules    []ruler.Rule
-	*window
+	windows.Window
 	*stackr
 	*floatr
 	*tilr
 	*state
 	*bordr
 	*shiftr
+}
+
+func NewClient(class, instance string, c *xgb.Conn, x xproto.Window, r xproto.Window, rules ...ruler.Rule) Client {
+	//return &client{
+	//	class:    class,
+	//	instance: instance,
+	//	rules:    rules,
+	//}
+	// determine via rules --
+	//Window:   windows.New(c, x, r),
+	//stackr:   newStackr(),
+	//state:    newState(),
+	//tilr:     newTilr(),
+	//floatr:   newFloatr(),
+	//bordr:    newBordr(),
+	//shiftr:   newShiftr(),
+	return nil
 }
 
 func (c *client) Class() string {
@@ -53,25 +71,6 @@ func (c *client) Rectangle() xproto.Rectangle {
 		return c.tilr.rectangle
 	}
 	return c.floatr.rectangle
-}
-
-func (c *client) Center(rect xproto.Rectangle) {
-	r := c.floatr.rectangle
-
-	if r.Width >= rect.Width {
-		r.X = rect.X
-	} else {
-		r.X = rect.X + (int16(rect.Width)-int16(r.Width))/2
-	}
-
-	if r.Height >= rect.Height {
-		r.Y = rect.Y
-	} else {
-		r.Y = rect.Y + (int16(rect.Height)-int16(r.Height))/2
-	}
-
-	r.X -= int16(c.borderWidth)
-	r.Y -= int16(c.borderWidth)
 }
 
 func (c *client) Adjacent(o Client, direction string) bool {

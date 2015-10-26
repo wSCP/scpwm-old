@@ -27,6 +27,25 @@ func defaultSocketPath() string {
 	return socketPath
 }
 
+func defaultConfigPath() string {
+	var pth string
+	ch := os.Getenv(ConfigHomeEnv)
+	if ch != "" {
+		pth = fmt.Sprintf("%s/%s", ch, ConfigFile)
+	} else {
+		pth = fmt.Sprintf("%s/%s/%s", os.Getenv("HOME"), ".config", ConfigFile)
+	}
+	return pth
+}
+
+func init() {
+	flag.StringVar(&ConfigPath, "config", defaultConfigPath(), "Reads the main configuration from the given file. The default location is 'XDG_CONFIG_HOME/euclid/euclidrc'")
+	flag.StringVar(&socketEnv, "e", socketEnv, "Reads the socket from the given env variable, scpwm will attempt to read from 'SCPWM_SOCKET' by default")
+	flag.StringVar(&socketPath, "p", defaultSocketPath(), "Reads the socket from the given path. Default is '/tmp/scpwm_0_0-socket'")
+	flag.BoolVar(&verbose, "v", verbose, "Verbose logging messages, default is false.")
+	flag.Parse()
+}
+
 func main() {
 	e := manager.New()
 	sckt, err := net.ListenUnix("unix", &net.UnixAddr{socketPath, "unix"})
@@ -54,29 +73,10 @@ EVT:
 			if verbose {
 				e.Println(msg)
 			}
+		case sig := <-l.Sys:
+			e.SignalHandler(sig)
 		case <-l.Quit:
 			break EVT
 		}
 	}
-
-	e.Println("EXITING......\n")
-}
-
-func defaultConfigPath() string {
-	var pth string
-	ch := os.Getenv(ConfigHomeEnv)
-	if ch != "" {
-		pth = fmt.Sprintf("%s/%s", ch, ConfigFile)
-	} else {
-		pth = fmt.Sprintf("%s/%s/%s", os.Getenv("HOME"), ".config", ConfigFile)
-	}
-	return pth
-}
-
-func init() {
-	flag.StringVar(&ConfigPath, "config", defaultConfigPath(), "Reads the main configuration from the given file. The default location is 'XDG_CONFIG_HOME/euclid/euclidrc'")
-	flag.StringVar(&socketEnv, "e", socketEnv, "Reads the socket from the given env variable, scpwm will attempt to read from 'SCPWM_SOCKET' by default")
-	flag.StringVar(&socketPath, "p", defaultSocketPath(), "Reads the socket from the given path. Default is '/tmp/scpwm_0_0-socket'")
-	flag.BoolVar(&verbose, "v", verbose, "Verbose logging messages, default is false.")
-	flag.Parse()
 }

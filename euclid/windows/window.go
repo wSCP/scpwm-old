@@ -1,4 +1,4 @@
-package client
+package windows
 
 import (
 	"github.com/BurntSushi/xgb"
@@ -7,7 +7,7 @@ import (
 
 type Window interface {
 	Conn() *xgb.Conn
-	Window() xproto.Window
+	XWindow() xproto.Window
 	Close()
 	Kill()
 	SetBorderWidth(uint32)
@@ -17,10 +17,14 @@ type Window interface {
 	Raise()
 	Lower()
 	Stack(xproto.Window, uint32)
-	Above()
-	Below()
+	Above(Window)
+	Below(Window)
 	Hide()
 	Show()
+}
+
+func New(c *xgb.Conn, w xproto.Window, r xproto.Window) Window {
+	return &window{c, w, r}
 }
 
 type window struct {
@@ -33,7 +37,7 @@ func (w *window) Conn() *xgb.Conn {
 	return w.c
 }
 
-func (w *window) Window() xproto.Window {
+func (w *window) XWindow() xproto.Window {
 	return w.w
 }
 
@@ -82,11 +86,11 @@ func (w *window) Stack(o xproto.Window, mode uint32) {
 }
 
 func (w *window) Above(o Window) {
-	w.Stack(o.Window(), xproto.StackModeAbove)
+	w.Stack(o.XWindow(), xproto.StackModeAbove)
 }
 
 func (w *window) Below(o Window) {
-	w.Stack(o.Window(), xproto.StackModeBelow)
+	w.Stack(o.XWindow(), xproto.StackModeBelow)
 }
 
 var (
@@ -95,20 +99,24 @@ var (
 	windowOn             = []uint32{RootEventMask}
 )
 
-func (w *window) setVisibility(v bool) {
-	xproto.ChangeWindowAttributesChecked(w.c, w.r, xproto.CwEventMask, windowOff)
+func SetVisible(v bool, c *xgb.Conn, w xproto.Window, root xproto.Window) {
+	setVisibility(v, c, w, root)
+}
+
+func setVisibility(v bool, c *xgb.Conn, w xproto.Window, root xproto.Window) {
+	xproto.ChangeWindowAttributesChecked(c, root, xproto.CwEventMask, windowOff)
 	if v {
-		xproto.MapWindow(w.c, w.w)
+		xproto.MapWindow(c, w)
 	} else {
-		xproto.UnmapWindow(w.c, w.w)
+		xproto.UnmapWindow(c, w)
 	}
-	xproto.ChangeWindowAttributesChecked(w.c, w.r, xproto.CwEventMask, windowOn)
+	xproto.ChangeWindowAttributesChecked(c, root, xproto.CwEventMask, windowOn)
 }
 
 func (w *window) Hide() {
-	w.setVisibility(false)
+	setVisibility(false, w.c, w.w, w.r)
 }
 
 func (w *window) Show() {
-	w.setVisibility(true)
+	setVisibility(true, w.c, w.w, w.r)
 }

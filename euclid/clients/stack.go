@@ -1,14 +1,12 @@
-package client
-
-type Stack interface {
-	Min() int
-	Max() int
-	Reset()
-}
+package clients
 
 type Stackr interface {
 	GetStack() int
 	SetStack(int)
+}
+
+func newStackr() *stackr {
+	return &stackr{}
 }
 
 type stackr struct {

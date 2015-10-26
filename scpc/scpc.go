@@ -8,12 +8,14 @@ import (
 	"log"
 	"net"
 	"os"
+	"time"
 )
 
 var (
-	socketEnv     string = "SCPWM_SOCKET"
-	socketPathTpl string = "/tmp/scpwm%s_%d_%d-socket"
-	socketPath    string
+	socketEnv       string = "SCPWM_SOCKET"
+	socketPathTpl   string = "/tmp/scpwm%s_%d_%d-socket"
+	socketPath      string
+	timeoutDuration int = 3
 
 	logger = log.New(os.Stderr, "[SCPC] ", log.Ldate|log.Lmicroseconds)
 )
@@ -64,30 +66,83 @@ func send(args []string) []byte {
 	return b.Bytes()
 }
 
-func outcome(response string, sent []byte) {
-	logger.Println(fmt.Sprintf("euclid returned: `%s` to sent message: `%s`", response, sent))
+func outcome(r Response, sent []byte) {
+	logger.Println(fmt.Sprintf("euclid returned: `%s` to sent message: `%s`", r, sent))
 }
 
-func response(c io.Reader, sent []byte) {
+type Response int
+
+const (
+	unknown Response = iota
+	failure
+	syntax
+	length
+	timeout
+	success
+)
+
+func (r Response) String() string {
+	switch r {
+	case unknown:
+		return "unknown"
+	case failure:
+		return "failure"
+	case syntax:
+		return "syntax"
+	case length:
+		return "length"
+	case timeout:
+		return "timeout"
+	case success:
+		return "success"
+	}
+	return ""
+}
+
+var toConstResponse = map[string]Response{
+	"unknown": unknown,
+	"failure": failure,
+	"syntax":  syntax,
+	"length":  length,
+	"timeout": timeout,
+	"success": success,
+}
+
+func response(c io.Reader, sent []byte) Response {
 	buf := make([]byte, 1024)
+	t := time.After(3 * time.Second)
 	for {
-		n, err := c.Read(buf[:])
-		if err != nil {
-			logger.Println(err)
-			return
-		}
-		resp := string(buf[0:n])
-		if resp != "success" {
-			switch resp {
-			case "failure", "syntax", "unknown", "length":
-				outcome(resp, sent)
-				return
-			default:
-				outcome("UNCATEGORIZABLE", sent)
-				return
+		select {
+		case <-t:
+			logger.Println("timeout, no response from euclid after %d seconds", timeoutDuration)
+			return timeout
+		default:
+			n, err := c.Read(buf[:])
+			if err != nil {
+				logger.Println(err)
+				return failure
+			}
+			if resp, ok := toConstResponse[string(buf[0:n])]; ok {
+				switch resp {
+				case failure, syntax, length:
+					outcome(resp, sent)
+					return resp
+				case success:
+					return resp
+				default:
+					outcome(unknown, sent)
+					return resp
+				}
 			}
 		}
 	}
+	return timeout
+}
+
+func exit(c *net.UnixConn, code int) {
+	c.Close()
+	os.Remove("/tmp/scpc")
+	os.Exit(code)
 }
 
 func main() {
@@ -97,8 +152,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer conn.Close()
-	defer os.Remove("/tmp/scpc")
 
 	sent := send(os.Args[1:])
 	_, err = conn.Write(sent)
@@ -106,11 +159,22 @@ func main() {
 		panic(err)
 	}
 
-	response(conn, sent)
+	rsp := response(conn, sent)
+	switch rsp {
+	case success:
+		exit(conn, 0)
+	case failure, length, timeout:
+		exit(conn, 1)
+	case syntax:
+		exit(conn, 2)
+	default:
+		exit(conn, 3)
+	}
 }
 
 func init() {
 	flag.StringVar(&socketEnv, "e", socketEnv, "Read the socket from the given env variable")
 	flag.StringVar(&socketPath, "p", defaulSocketPath(), "Read the socket from the given path.")
+	flag.IntVar(&timeoutDuration, "t", timeoutDuration, "Wait only specified seconds euclid's response, default is 3")
 	flag.Parse()
 }

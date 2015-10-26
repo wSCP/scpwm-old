@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/thrisp/scpwm/euclid/handler"
+	"github.com/thrisp/scpwm/euclid/clients"
+	"github.com/thrisp/scpwm/euclid/desktops"
+	"github.com/thrisp/scpwm/euclid/monitors"
 	"github.com/thrisp/scpwm/euclid/settings"
 )
 
@@ -56,33 +58,39 @@ func parseCmd(s []string) (string, []string, []string) {
 	return pri, subcmd, s[1:]
 }
 
-func (c Command) process(s *settings.Settings, h handler.Handler) (cmdrResponse, error) {
+type (
+	GetMonitors func() []monitors.Monitor
+	GetDesktops func() []desktops.Desktop
+	GetClients  func() []clients.Client
+)
+
+func (c Command) process(d Data) (Response, error) {
 	switch c.pri {
 	case "config":
-		return c.config(s, h)
+		return c.config(d)
 	case "monitor":
-		return c.monitor(s, h)
+		return c.monitor(d)
 	case "desktop":
-		return c.desktop(s, h)
+		return c.desktop(d)
 	case "client":
-		return c.client(s, h)
+		return c.client(d)
 	case "query":
-		return c.query(s, h)
+		return c.query(d)
 	case "rule":
-		return c.rule(s, h)
+		return c.rule(d)
 	case "pointer":
-		return c.pointer(s, h)
+		return c.pointer(d)
 	case "restore":
-		return c.restore(s, h)
+		return c.restore(d)
 	case "control":
-		return c.control(s, h)
+		return c.control(d)
 	case "quit":
-		return c.quit(s, h)
+		return c.quit(d)
 	}
 	return mUNKNOWN, UnknownError(c.pri, string(c.raw))
 }
 
-func (c Command) config(s *settings.Settings, h handler.Handler) (cmdrResponse, error) {
+func (c Command) config(d Data) (Response, error) {
 	/*mon := e.Monitors.Focused()
 	desk := mon.Desktops.Current()
 	ref := Coordinates(e, mon, desk, nil)
@@ -116,47 +124,47 @@ func (c Command) config(s *settings.Settings, h handler.Handler) (cmdrResponse, 
 	return mUNKNOWN, nil
 }
 
-func (c Command) monitor(s *settings.Settings, h handler.Handler) (cmdrResponse, error) {
+func (c Command) monitor(d Data) (Response, error) {
 	//int cmd_monitor(char **args, int num);
 	return mUNKNOWN, nil
 }
 
-func (c Command) desktop(s *settings.Settings, h handler.Handler) (cmdrResponse, error) {
+func (c Command) desktop(d Data) (Response, error) {
 	//int cmd_desktop(char **args, int num);
 	return mUNKNOWN, nil
 }
 
-func (c Command) client(s *settings.Settings, h handler.Handler) (cmdrResponse, error) {
+func (c Command) client(d Data) (Response, error) {
 	//int cmd_window(char **args, int num);
 	return mUNKNOWN, nil
 }
 
-func (c Command) query(s *settings.Settings, h handler.Handler) (cmdrResponse, error) {
+func (c Command) query(d Data) (Response, error) {
 	//int cmd_query(char **args, int num, FILE *rsp);
 	return mUNKNOWN, nil
 }
 
-func (c Command) rule(s *settings.Settings, h handler.Handler) (cmdrResponse, error) {
+func (c Command) rule(d Data) (Response, error) {
 	//int cmd_rule(char **args, int num, FILE *rsp);
 	return mUNKNOWN, nil
 }
 
-func (c Command) pointer(s *settings.Settings, h handler.Handler) (cmdrResponse, error) {
+func (c Command) pointer(d Data) (Response, error) {
 	//int cmd_pointer(char **args, int num);
 	return mUNKNOWN, nil
 }
 
-func (c Command) restore(s *settings.Settings, h handler.Handler) (cmdrResponse, error) {
+func (c Command) restore(d Data) (Response, error) {
 	//int cmd_restore(char **args, int num);
 	return mUNKNOWN, nil
 }
 
-func (c Command) control(s *settings.Settings, h handler.Handler) (cmdrResponse, error) {
+func (c Command) control(d Data) (Response, error) {
 	//int cmd_control(char **args, int num, FILE *rsp);
 	return mUNKNOWN, nil
 }
 
-func (c Command) quit(s *settings.Settings, h handler.Handler) (cmdrResponse, error) {
+func (c Command) quit(d Data) (Response, error) {
 	//int cmd_quit(char **args, int num);
 	return mFAILURE, nil
 }
@@ -180,11 +188,11 @@ func (c Command) length() int {
 	return len(c.cmd)
 }
 
-func (c Command) setSetting(s *settings.Settings) (cmdrResponse, error) {
+func (c Command) setSetting(s settings.Settings) (Response, error) {
 	return mUNKNOWN, errors.New("SET SETTING UNKNOWN")
 }
 
-func (c Command) getSetting(s *settings.Settings) (cmdrResponse, error) {
+func (c Command) getSetting(s settings.Settings) (Response, error) {
 	return mUNKNOWN, errors.New("GET SETTING UNKNOWN")
 }
 

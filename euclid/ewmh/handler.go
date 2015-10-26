@@ -1,23 +1,26 @@
-package manager
+package ewmh
 
 /*
 import (
 	"github.com/BurntSushi/xgb/xproto"
-	"github.com/thrisp/scpwm/euclid/ewmh"
+
+	//"github.com/thrisp/scpwm/euclid/clients"
+	//"github.com/thrisp/scpwm/euclid/desktops"
+	//"github.com/thrisp/scpwm/euclid/branch"
 )
 
-type Ewmh interface {
+type EwmhHandler interface {
 	DesktopsState
 	WmState
 }
 
-type extendedWindowManagerHints struct {
+type ewmhHandler struct {
 	DesktopsState
 	WmState
 }
 
-func NewEwmh(e ewmh.EWMH) Ewmh {
-	return &extendedWindowManagerHints{
+func NewEwmh(e EWMH) Ewmh {
+	return &ewmhHandler{
 		DesktopsState: newDesktopsState(e),
 		WmState:       newWmState(e),
 	}
@@ -47,17 +50,17 @@ func newDesktopsState(e ewmh.EWMH) *desktopsState {
 //}
 
 //uint32_t ewmh_get_desktop_index(desktop_t *d)
-func (d *desktopsState) GetDesktopIndex(dsk *Desktop) uint32 {
+//func (d *desktopsState) GetDesktopIndex(dsk *Desktop) uint32 {
 	//var i uint32
 	//for (monitor_t *m = mon_head; m != NULL; m = m->next)
 	//	for (desktop_t *cd = m->desk_head; cd != NULL; cd = cd->next, i++)
 	//		if (d == cd)
 	//			return i;
-	return 0
-}
+	//return 0
+//}
 
 //bool ewmh_locate_desktop(uint32_t i, coordinates_t *loc)
-func (d *desktopsState) LocateDesktop() bool {
+//func (d *desktopsState) LocateDesktop() bool {
 	//for (monitor_t *m = mon_head; m != NULL; m = m->next)
 	//	for (desktop_t *d = m->desk_head; d != NULL; d = d->next, i--)
 	//		if (i == 0) {
@@ -66,8 +69,8 @@ func (d *desktopsState) LocateDesktop() bool {
 	//			loc->node = NULL;
 	//			return true;
 	//		}
-	return false
-}
+	//return false
+//}
 
 //void ewmh_update_current_desktop(void)
 func (d *desktopsState) UpdateCurrentDesktop() {
@@ -170,7 +173,7 @@ func (w *wmState) UpdateClientList() {
 const MAXSTATE = int(4)
 
 //bool ewmh_wm_state_add(client_t *c, xcb_atom_t state)
-func (w *wmState) AddClient(c *Client, state xproto.Atom) bool {
+func (w *wmState) AddClient(c Client, state xproto.Atom) bool {
 	if c.numStates <= MAXSTATE {
 		//for (int i = 0; i < c->num_states; i++)
 		//	if (c->wm_state[i] == state)
@@ -183,7 +186,7 @@ func (w *wmState) AddClient(c *Client, state xproto.Atom) bool {
 }
 
 //bool ewmh_wm_state_remove(client_t *c, xcb_atom_t state)
-func (w *wmState) RemoveClient(c *Client, state xproto.Atom) bool {
+func (w *wmState) RemoveClient(c Client, state xproto.Atom) bool {
 	//for (int i = 0; i < c->num_states; i++)
 	//	if (c->wm_state[i] == state)
 	//	{

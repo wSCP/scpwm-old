@@ -5,8 +5,6 @@ import (
 	"strconv"
 )
 
-//go:generate stringer -type=ruleCause
-
 type ruleCause int
 
 const (

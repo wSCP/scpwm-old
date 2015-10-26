@@ -8,8 +8,8 @@ import (
 )
 
 type Ruler interface {
-	Add(...string) bool
-	Remove(...string) bool
+	Rule(...string) bool
+	Unrule(...string) bool
 	Applicable(xproto.Window) ([]Rule, bool)
 	Pending() []Rule
 }
@@ -24,7 +24,7 @@ func New() Ruler {
 	}
 }
 
-func (r *ruler) Add(d ...string) bool {
+func (r *ruler) Rule(d ...string) bool {
 	var once bool
 	switch len(d) {
 	case 4:
@@ -47,7 +47,7 @@ func (r *ruler) add(once bool, d ...string) bool {
 	return false
 }
 
-func (r *ruler) Remove(d ...string) bool {
+func (r *ruler) Unrule(d ...string) bool {
 	var once string
 	switch len(d) {
 	case 4:

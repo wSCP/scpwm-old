@@ -1,90 +1,168 @@
 package settings
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 )
 
-type Settings struct {
-	Visible     bool
-	StickyStill bool
-	AutoRaise   bool
-	s           store
+type Settings interface {
+	Getter
+	Setter
+	Copy() Settings
+}
+
+type Getter interface {
+	Query(string) (StoreItem, error)
+	String(string) string
+	Bool(string) bool
+	Int(string) int
+	Float(string) float64
+	List(string) []string
+}
+
+type Setter interface {
+	Add(string, string)
+	Insert(StoreItem)
+}
+
+type settings struct {
+	s store
+}
+
+type store map[string]StoreItem
+
+func (s store) add(k, v string) {
+	s[k] = NewStoreItem(k, v)
+}
+
+func (s store) insert(i StoreItem) {
+	s[i.Key()] = i
 }
 
 var NoSetting = Xrror("Setting \"%s\" is unavailable").Out
 
-func (s *Settings) query(key string) (*storeItem, error) {
+func (s *settings) Query(key string) (StoreItem, error) {
 	if v, ok := s.s[key]; ok {
 		return v, nil
 	}
 	return nil, NoSetting(key)
 }
 
-func (e Settings) String(key string) string {
-	s, _ := e.query(key)
-	if s != nil {
-		return s.String()
+func (s *settings) String(key string) string {
+	q, _ := s.Query(key)
+	if q != nil {
+		return q.String()
 	}
 	return ""
 }
 
-func (e Settings) Bool(key string) bool {
-	s, _ := e.query(key)
-	if s != nil {
-		return s.Bool()
+func (s *settings) Bool(key string) bool {
+	q, _ := s.Query(key)
+	if q != nil {
+		return q.Bool()
 	}
 	return false
 }
 
-func (e Settings) Int(key string) int {
-	s, _ := e.query(key)
-	if s != nil {
-		return s.Int()
+func (s *settings) Int(key string) int {
+	q, _ := s.Query(key)
+	if q != nil {
+		return q.Int()
 	}
 	return 0
 }
 
-func (e Settings) Float(key string) float64 {
-	s, _ := e.query(key)
-	if s != nil {
-		return s.Float()
+func (s *settings) Float(key string) float64 {
+	q, _ := s.Query(key)
+	if q != nil {
+		return q.Float()
 	}
 	return 0.0
 }
 
-func (e Settings) List(key string) []string {
-	s, _ := e.query(key)
-	if s != nil {
-		return s.List()
+func (s *settings) List(key string) []string {
+	q, _ := s.Query(key)
+	if q != nil {
+		return q.List()
 	}
 	return []string{}
 }
 
-type store map[string]*storeItem
-
-func (s store) Add(k, v string) {
-	s[k] = NewStoreItem(k, v)
+func (s *settings) Pad(key string) [4]int {
+	q, _ := s.Query(key)
+	if q != nil {
+		return q.Pad()
+	}
+	return [4]int{0, 0, 0, 0}
 }
 
-func (s store) Insert(i *storeItem) {
-	s[i.key] = i
+func (s *settings) Add(k, v string) {
+	s.s.add(k, v)
+}
+
+func (s *settings) Insert(i StoreItem) {
+	s.s.insert(i)
+}
+
+func (s *settings) Copy() Settings {
+	nst := make(store)
+	for k, v := range s.s {
+		nst[k] = v
+	}
+	return &settings{s: nst}
+}
+
+type StoreItem interface {
+	Set(string, string, string)
+	Key() string
+	String() string
+	Bool() bool
+	Float() float64
+	Int() int
+	Int64() int64
+	List(...string) []string
+	Pad() [4]int
 }
 
 type storeItem struct {
-	key   string
-	value string
+	key        string
+	value      string
+	localvalue string
+	global     bool
 }
 
-func NewStoreItem(k, v string) *storeItem {
+func NewStoreItem(k, v string) StoreItem {
 	return &storeItem{
-		key:   k,
-		value: v,
+		key:    k,
+		value:  v,
+		global: true,
 	}
 }
 
-func (i *storeItem) String() string {
+func (i *storeItem) valueScope() string {
+	if !i.global {
+		return i.localvalue
+	}
 	return i.value
+}
+
+func (i *storeItem) Set(scope, key, value string) {
+	switch scope {
+	case "global":
+		i.value = value
+	case "local":
+		i.localvalue = value
+	}
+	i.key = key
+}
+
+func (i *storeItem) Key() string {
+	return i.key
+}
+
+func (i *storeItem) String() string {
+	return i.valueScope()
 }
 
 var boolString = map[string]bool{
@@ -103,28 +181,28 @@ var boolString = map[string]bool{
 }
 
 func (i *storeItem) Bool() bool {
-	if value, ok := boolString[strings.ToLower(i.value)]; ok {
+	if value, ok := boolString[strings.ToLower(i.valueScope())]; ok {
 		return value
 	}
 	return false
 }
 
 func (i *storeItem) Float() float64 {
-	if value, err := strconv.ParseFloat(i.value, 64); err == nil {
+	if value, err := strconv.ParseFloat(i.valueScope(), 64); err == nil {
 		return value
 	}
 	return 0.0
 }
 
 func (i *storeItem) Int() int {
-	if value, err := strconv.Atoi(i.value); err == nil {
+	if value, err := strconv.Atoi(i.valueScope()); err == nil {
 		return value
 	}
 	return 0
 }
 
 func (i *storeItem) Int64() int64 {
-	if value, err := strconv.ParseInt(i.value, 10, 64); err == nil {
+	if value, err := strconv.ParseInt(i.valueScope(), 10, 64); err == nil {
 		return value
 	}
 	return -1
@@ -148,62 +226,38 @@ func doAdd(s string, ss []string) []string {
 
 func (i *storeItem) List(l ...string) []string {
 	if len(l) > 0 {
-		list := strings.Split(i.value, ",")
+		list := strings.Split(i.valueScope(), ",")
 		for _, item := range l {
 			list = doAdd(item, list)
 		}
-		i.value = strings.Join(list, ",")
+		lst := strings.Join(list, ",")
+		if i.global {
+			i.value = lst
+		} else {
+			i.localvalue = lst
+		}
 	}
-	return strings.Split(i.value, ",")
+	return strings.Split(i.valueScope(), ",")
 }
 
-var EwmhSupported []string = []string{
-	"_NET_SUPPORTED",
-	"_NET_SUPPORTING_WM_CHECK",
-	"_NET_DESKTOP_NAMES",
-	"_NET_NUMBER_OF_DESKTOPS",
-	"_NET_CURRENT_DESKTOP",
-	"_NET_CLIENT_LIST",
-	"_NET_ACTIVE_WINDOW",
-	"_NET_CLOSE_WINDOW",
-	"_NET_WM_DESKTOP",
-	"_NET_WM_STATE",
-	"_NET_WM_STATE_FULLSCREEN",
-	"_NET_WM_STATE_STICKY",
-	"_NET_WM_STATE_DEMANDS_ATTENTION",
-	"_NET_WM_WINDOW_TYPE",
-	"_NET_WM_WINDOW_TYPE_DOCK",
-	"_NET_WM_WINDOW_TYPE_DESKTOP",
-	"_NET_WM_WINDOW_TYPE_NOTIFICATION",
-	"_NET_WM_WINDOW_TYPE_DIALOG",
-	"_NET_WM_WINDOW_TYPE_UTILITY",
-	"_NET_WM_WINDOW_TYPE_TOOLBAR",
+func Pad(key string, right, up, left, down int) StoreItem {
+	val := fmt.Sprintf("%d,%d,%d,%d", right, up, left, down)
+	return NewStoreItem(key, val)
 }
 
-func DefaultSettings() *Settings {
-	s := make(store)
-	s.Add("WindowManagerName", "scpwm")
-	s.Add("ExternalRulesCommand", "TBD")
-	s.Add("StatusPrefix", "W")
-	s.Add("SplitRatio", "0.5")
-	s.Add("WindowGap", "6")
-	s.Add("BorderWidth", "1")
-	s.Add("CenterPseudoTiled", "true")
-	s.Add("RecordHistory", "true")
-	s.Add("DefaultMonitorName", "MONITOR")
-	s.Add("DefaultDesktopName", "DESKTOP")
-	s.Add("InitialPolarity", "right")
+func DefaultPad() StoreItem {
+	return Pad("DefaultPad", 0, 0, 0, 0)
+}
 
-	n := &storeItem{key: "ewmhSupported"}
-	n.List(EwmhSupported...)
-	s.Insert(n)
-
-	return &Settings{
-		Visible:     true,
-		StickyStill: true,
-		AutoRaise:   true,
-		s:           s,
+func (i *storeItem) Pad() [4]int {
+	var ret [4]int
+	lst := i.List()
+	for i, v := range lst {
+		if num, err := strconv.Atoi(v); err == nil {
+			ret[i] = num
+		}
 	}
+	return ret
 }
 
 //WmName                   string

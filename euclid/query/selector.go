@@ -5,17 +5,10 @@ import (
 	"strings"
 )
 
-type verb int
+type Adjective int
 
 const (
-	find verb = iota
-	match
-)
-
-type adjective int
-
-const (
-	cycled   adjective = iota // Cycle
+	cycled   Adjective = iota // Cycle
 	directed                  // Direction
 	oriented                  // Orientation
 	sized                     // Size
@@ -26,58 +19,18 @@ const (
 )
 
 type Selector interface {
-	Verb() verb
-	Adjective() adjective
 	Raw() string
+	Adjective() Adjective
 	Object() Node
-	Matcher
-}
-
-type Matcher interface {
-	Reference() *coordinate
-	Location() *coordinate
-	Set(string, *coordinate)
-}
-
-func defaultMatcher() Matcher {
-	return matcher{ref: &NoCoordinate, loc: &NoCoordinate}
-}
-
-type matcher struct {
-	ref *coordinate
-	loc *coordinate
-}
-
-func (m matcher) Reference() *coordinate {
-	return m.ref
-}
-
-func (m matcher) Location() *coordinate {
-	return m.loc
-}
-
-func (m matcher) Set(k string, c *coordinate) {
-	switch k {
-	case "reference":
-		m.ref = c
-	case "location":
-		m.loc = c
-	}
 }
 
 type selector struct {
-	verb      verb
-	adjective adjective
 	raw       string
+	adjective Adjective
 	object    Node
-	Matcher
 }
 
-func (s selector) Verb() verb {
-	return s.verb
-}
-
-func (s selector) Adjective() adjective {
+func (s selector) Adjective() Adjective {
 	return s.adjective
 }
 
@@ -89,8 +42,8 @@ func (s selector) Object() Node {
 	return s.object
 }
 
-func NewSelector(v verb, o Node, adj, xtra string) Selector {
-	sel := selector{object: o, Matcher: defaultMatcher()}
+func NewSelector(o Node, adj, xtra string) Selector {
+	sel := selector{object: o}
 	switch adj {
 	case "first", "last", "next", "previous", "forward", "backward":
 		sel.adjective = cycled
@@ -120,15 +73,77 @@ func NewSelector(v verb, o Node, adj, xtra string) Selector {
 	return sel
 }
 
-func Selectors(v verb, o Node, description string) []Selector {
+func Selectors(o Node, description string) []Selector {
 	var ret []Selector
 	descs := strings.Split(description, " ")
 	for i, desc := range descs {
 		if desc == "name" || desc == "id" || desc == "index" {
-			ret = append(ret, NewSelector(v, o, desc, descs[i+1]))
+			ret = append(ret, NewSelector(o, desc, descs[i+1]))
 		} else {
-			ret = append(ret, NewSelector(v, o, desc, ""))
+			ret = append(ret, NewSelector(o, desc, ""))
 		}
 	}
 	return ret
 }
+
+/*
+func (e *Euclid) Select(item string, description string) (coordinate, bool) {
+	var obj Node
+	loc := Coordinate(e, nil, nil, nil)
+	var sel []Selector
+	switch item {
+	case "monitor":
+		sel = Selectors(find, nMonitor, description)
+		obj = nMonitor
+	case "desktop":
+		sel = Selectors(find, nDesktop, description)
+		obj = nDesktop
+	case "client":
+		sel = Selectors(find, nClient, description)
+		obj = nClient
+	}
+	return e.get(obj, loc, sel...)
+}
+
+func (e *Euclid) get(obj Node, loc coordinate, sel ...Selector) (coordinate, bool) {
+	switch obj {
+	case nMonitor:
+		//return selectMonitor(e, loc, sel...)
+	case nDesktop:
+		//return selectDesktop(e, loc, sel...)
+	case nClient:
+		//return selectClient(e, loc, sel...)
+	}
+	return loc, false
+}
+
+func (e *Euclid) Match(item, description string, location, reference *coordinate) bool {
+	var sel []Selector
+	switch item {
+	case "monitor":
+		sel = Selectors(match, nMonitor, description)
+	case "desktop":
+		sel = Selectors(match, nDesktop, description)
+	case "client":
+		sel = Selectors(match, nClient, description)
+	}
+	return e.match(location, reference, sel...)
+}
+
+func (e *Euclid) match(location, reference *coordinate, sel ...Selector) bool {
+	return false
+}
+
+//func locateWindow(h *Handler, w xproto.Window) (*Client, bool) {
+//for _, m := range h.monitors {
+//	for _, d := range m.desktops {
+//		for _, c := range d.clients {
+//			if w == c.Window.Window {
+//				return c, true
+//			}
+//		}
+//	}
+//}
+//return nil, false
+//}
+*/

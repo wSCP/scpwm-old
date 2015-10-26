@@ -43,12 +43,12 @@ type Eventr interface {
 	Dequeue() (xgb.Event, xgb.Error)
 	Handle(chan struct{}, chan struct{}, chan struct{})
 	Empty() bool
-	Quitr
+	Endr
 }
 
-type Quitr interface {
-	Quit()
-	Quitting() bool
+type Endr interface {
+	End()
+	Ending() bool
 }
 
 type Call func(xgb.Event) error
@@ -69,7 +69,7 @@ type handler struct {
 	EvtsLck *sync.RWMutex
 	call    map[xgb.Event]Call
 	callLck *sync.RWMutex
-	quit    bool
+	end     bool
 	//Windowr
 	//atomic.Atomic
 	//Ewmh
@@ -208,12 +208,12 @@ func (h *handler) Empty() bool {
 	return len(h.Events) == 0
 }
 
-func (h *handler) Quit() {
-	h.quit = true
+func (h *handler) End() {
+	h.end = true
 }
 
-func (h *handler) Quitting() bool {
-	return h.quit
+func (h *handler) Ending() bool {
+	return h.end
 }
 
 type evnt struct {
@@ -242,7 +242,7 @@ func (h *handler) Dequeue() (xgb.Event, xgb.Error) {
 
 func (h *handler) Handle(pre, post, quit chan struct{}) {
 	for {
-		if h.Quitting() {
+		if h.Ending() {
 			if quit != nil {
 				quit <- struct{}{}
 			}
@@ -258,14 +258,14 @@ func (h *handler) Handle(pre, post, quit chan struct{}) {
 func (h *handler) read() {
 	ev, err := h.Conn().WaitForEvent()
 	if ev == nil && err == nil {
-		h.Fatal("BUG: Could not read an event or an error.")
+		h.Fatal("euclid/handler BUG: Could not read an event or an error.")
 	}
 	h.Enqueue(ev, err)
 }
 
 func (h *handler) process(pre, post chan struct{}) {
 	for !h.Empty() {
-		if h.Quitting() {
+		if h.Ending() {
 			return
 		}
 
@@ -280,7 +280,7 @@ func (h *handler) process(pre, post chan struct{}) {
 		}
 
 		if ev == nil {
-			h.Fatal("BUG: Expected an event but got nil.")
+			h.Fatal("euclid/handler BUG: Expected an event but got nil.")
 		}
 
 		switch evt := ev.(type) {
@@ -395,7 +395,6 @@ func (h *handler) Call(evt xgb.Event) {
 //}
 
 /*
-
 func ClientEvent(c *xgb.Conn, root, w xproto.Window, a xproto.Atom, data ...interface{}) error {
 	evMask := (xproto.EventMaskSubstructureNotify | xproto.EventMaskSubstructureRedirect)
 	cm, err := mkClientMessage(32, w, a, data...)
