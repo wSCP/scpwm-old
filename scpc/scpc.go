@@ -15,7 +15,8 @@ var (
 	socketEnv       string = "SCPWM_SOCKET"
 	socketPathTpl   string = "/tmp/scpwm%s_%d_%d-socket"
 	socketPath      string
-	timeoutDuration int = 3
+	responseTimeout time.Duration = 2
+	verbose         bool
 
 	logger = log.New(os.Stderr, "[SCPC] ", log.Ldate|log.Lmicroseconds)
 )
@@ -41,7 +42,7 @@ func send(args []string) []byte {
 	var r []int
 	for i, v := range args {
 		switch v {
-		case "-p", "-e":
+		case "-v", "-t", "-p", "-e":
 			r = append(r, i, i+1)
 		}
 	}
@@ -66,8 +67,18 @@ func send(args []string) []byte {
 	return b.Bytes()
 }
 
-func outcome(r Response, sent []byte) {
-	logger.Println(fmt.Sprintf("euclid returned: `%s` to sent message: `%s`", r, sent))
+func responded(r Response, sent []byte) Response {
+	if verbose {
+		logger.Println(fmt.Sprintf("euclid returned: `%s` to sent message: `%s`", r, sent))
+	}
+	return r
+}
+
+func timedout() Response {
+	if verbose {
+		logger.Println("timeout, no response from euclid after %d seconds", responseTimeout)
+	}
+	return timeout
 }
 
 type Response int
@@ -99,7 +110,7 @@ func (r Response) String() string {
 	return ""
 }
 
-var toConstResponse = map[string]Response{
+var stringResponse = map[string]Response{
 	"unknown": unknown,
 	"failure": failure,
 	"syntax":  syntax,
@@ -110,29 +121,19 @@ var toConstResponse = map[string]Response{
 
 func response(c io.Reader, sent []byte) Response {
 	buf := make([]byte, 1024)
-	t := time.After(3 * time.Second)
+	t := time.After(responseTimeout * time.Second)
 	for {
 		select {
 		case <-t:
-			logger.Println("timeout, no response from euclid after %d seconds", timeoutDuration)
-			return timeout
+			return timedout()
 		default:
 			n, err := c.Read(buf[:])
 			if err != nil {
 				logger.Println(err)
 				return failure
 			}
-			if resp, ok := toConstResponse[string(buf[0:n])]; ok {
-				switch resp {
-				case failure, syntax, length:
-					outcome(resp, sent)
-					return resp
-				case success:
-					return resp
-				default:
-					outcome(unknown, sent)
-					return resp
-				}
+			if resp, ok := stringResponse[string(buf[0:n])]; ok {
+				return responded(resp, sent)
 			}
 		}
 	}
@@ -175,6 +176,7 @@ func main() {
 func init() {
 	flag.StringVar(&socketEnv, "e", socketEnv, "Read the socket from the given env variable")
 	flag.StringVar(&socketPath, "p", defaulSocketPath(), "Read the socket from the given path.")
-	flag.IntVar(&timeoutDuration, "t", timeoutDuration, "Wait only specified seconds euclid's response, default is 3")
+	flag.DurationVar(&responseTimeout, "t", responseTimeout, "Wait only specified seconds euclid's response, default is 2")
+	flag.BoolVar(&verbose, "v", verbose, "Verbose logging messages, default is false.")
 	flag.Parse()
 }

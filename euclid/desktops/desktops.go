@@ -28,6 +28,12 @@ func All(desktops *branch.Branch) []Desktop {
 	return ret
 }
 
+func Add(desktops *branch.Branch, monitor uint32, name string, s settings.Settings) {
+	nd := NewDesktop(monitor, name, s)
+	desktops.PushBack(nd)
+	UpdateDesktopsIndex(desktops)
+}
+
 type SelectDesktop func(Desktop) bool
 
 func seek(desktops *branch.Branch, fn SelectDesktop) Desktop {

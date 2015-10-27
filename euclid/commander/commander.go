@@ -12,6 +12,13 @@ import (
 	"github.com/thrisp/scpwm/euclid/settings"
 )
 
+type Commander interface {
+	Listen(*net.UnixListener, Data)
+	Process([]byte, Data) Response
+}
+
+type Response []byte
+
 type Data interface {
 	settings.Settings
 	handler.Handler
@@ -19,11 +26,6 @@ type Data interface {
 	Monitors() []monitors.Monitor
 	Desktops() []desktops.Desktop
 	Clients() []clients.Client
-}
-
-type Commander interface {
-	Listen(*net.UnixListener, Data)
-	Process([]byte, Data) Response
 }
 
 type commander struct {
@@ -52,17 +54,6 @@ func (c *commander) Listen(l *net.UnixListener, d Data) {
 	}
 }
 
-func (c *commander) Process(msg []byte, d Data) Response {
-	cmd := NewCommand(msg)
-	resp, err := cmd.process(d)
-	if err != nil {
-		c.comm <- err.Error()
-	}
-	return resp
-}
-
-type Response []byte
-
 var (
 	mSUCCESS Response = []byte("success")
 	mSYNTAX  Response = []byte("syntax")
@@ -70,3 +61,12 @@ var (
 	mLENGTH  Response = []byte("length")
 	mFAILURE Response = []byte("failure")
 )
+
+func (c *commander) Process(msg []byte, d Data) Response {
+	cmd := NewCommand(msg)
+	resp, err := cmd.Process(d)
+	if err != nil {
+		c.comm <- err.Error()
+	}
+	return resp
+}
