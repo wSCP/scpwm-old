@@ -1,25 +1,21 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"log"
 	"os"
-	"os/signal"
 	"syscall"
 )
 
 var (
+	Logger          = log.New(os.Stderr, "KETER: ", log.Ldate|log.Lmicroseconds)
 	CONFIG_HOME_ENV = "XDG_CONFIG_HOME"
-	//KETER_SHELL_ENV = "KETER_SHELL"
-	///SHELL_ENV       = "SHELL"
-	CONFIG_PATH = "keter/keterrc"
-	//socketPath      string
-	//SOCKET_ENV      = "SCPWM_SOCKET"
-	//SOCKET_PATH_TPL = "/tmp/scpwm%s_%d_%d-socket"
-	ChainExpiry int
-	ConfigPath  string
-	Logger      = log.New(os.Stderr, "KETER: ", log.Lshortfile)
+	CONFIG_PATH     = "keter/keterrc"
+	ChainExpiry     int
+	ConfigPath      string
+	verbose         bool
 )
 
 func defaultConfigPath() string {
@@ -33,35 +29,57 @@ func defaultConfigPath() string {
 	return pth
 }
 
+func SignalHandler(h Handlr, s os.Signal) {
+	msg := new(bytes.Buffer)
+	switch s {
+	case syscall.SIGINT:
+		Logger.Println("SIGINT")
+		os.Exit(0)
+	case syscall.SIGHUP:
+		msg.WriteString("Got signal SIGHUP, reconfiguring....\n")
+		chains, err := LoadConfig(ConfigPath)
+		if err != nil {
+			msg.WriteString(fmt.Sprintf("error while loading config: %s\n", err.Error()))
+		}
+		err = Configure(h, chains)
+		if err != nil {
+			msg.WriteString(fmt.Sprintf("error while configuring: %s\n", err))
+		}
+	default:
+		Logger.Println(fmt.Sprintf("received %v", s))
+
+	}
+	if verbose && msg.Len() != 0 {
+		Logger.Println(msg.String())
+	}
+}
+
 func main() {
 	chains, err := LoadConfig(ConfigPath)
-
 	if err != nil {
 		Logger.Fatalf("configuration loading error: %s", err.Error())
 	}
 
-	X, err := Configure(chains)
-
+	hndl, err := NewHandlr("")
 	if err != nil {
-		Logger.Fatalf("configuration error: %s", err.Error())
+		Logger.Fatalf("handler configuration error: %s", err.Error())
 	}
 
-	//socket path
+	err = Configure(hndl, chains)
+	if err != nil {
+		Logger.Fatalf("key chain configuration error: %s", err.Error())
+	}
 
-	//fifo path
-
-	s := make(chan os.Signal, 1)
-	signal.Notify(s, syscall.SIGHUP)
-	b, a, q := Main(X)
+	before, after, quit, signals := Loop(hndl)
 
 EVENTLOOP:
 	for {
 		select {
-		case <-b:
-			<-a
-		case sig := <-s:
-			fmt.Printf("Got A HUP Signal %s! Now Reloading Conf....\n", sig)
-		case <-q:
+		case <-before:
+			<-after
+		case sig := <-signals:
+			SignalHandler(hndl, sig)
+		case <-quit:
 			break EVENTLOOP
 		}
 	}
@@ -70,5 +88,6 @@ EVENTLOOP:
 func init() {
 	flag.IntVar(&ChainExpiry, "timeout", 2, "Timeout in seconds for the recording of chord chains.")
 	flag.StringVar(&ConfigPath, "config", defaultConfigPath(), "Read the main configuration from the given file.")
+	flag.BoolVar(&verbose, "verbose", verbose, "Verbose logging messages, default is false.")
 	flag.Parse()
 }

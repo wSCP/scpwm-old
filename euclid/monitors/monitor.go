@@ -7,7 +7,7 @@ import (
 	"github.com/thrisp/scpwm/euclid/branch"
 	"github.com/thrisp/scpwm/euclid/desktops"
 	"github.com/thrisp/scpwm/euclid/settings"
-	"github.com/thrisp/scpwm/euclid/windows"
+	"github.com/thrisp/scpwm/euclid/window"
 )
 
 type Monitor interface {
@@ -17,11 +17,9 @@ type Monitor interface {
 	SetRectangle(xproto.Rectangle)
 	UpdateRoot()
 	Wired() bool
-	SetWired(bool)
-	Focus()
 	Primary() bool
+	Focus()
 	Focused() bool
-	Last() bool
 	Set(string, bool)
 	Contains(xproto.Point) bool
 	Desktops() *branch.Branch
@@ -69,7 +67,7 @@ func NewMonitor(id uint32, n string, c *xgb.Conn, root xproto.Window, r xproto.R
 	xproto.ConfigureWindowChecked(c, win, xproto.ConfigWindowStackMode, []uint32{xproto.StackModeBelow})
 
 	if s.Bool("FocusFollowPointer") {
-		windows.SetVisible(true, c, win, root)
+		window.SetVisible(true, c, win, root)
 	}
 
 	var pad [4]int
@@ -123,10 +121,6 @@ func (m *monitor) Wired() bool {
 	return m.wired
 }
 
-func (m *monitor) SetWired(v bool) {
-	m.wired = v
-}
-
 func (m *monitor) Focus() {
 	m.focused = true
 	if m.Settings.Bool("PointerFollowsMonitor") {
@@ -143,18 +137,18 @@ func (m *monitor) Focused() bool {
 	return m.focused
 }
 
-func (m *monitor) Last() bool {
-	return m.last
-}
-
 func (m *monitor) Set(k string, v bool) {
 	switch k {
+	case "wired":
+		m.wired = v
 	case "primary":
 		m.primary = v
 	case "focused":
-		m.focused = v
-	case "last":
-		m.last = v
+		if v {
+			m.Focus()
+		} else {
+			m.focused = v
+		}
 	}
 }
 

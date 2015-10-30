@@ -2,35 +2,46 @@ package main
 
 import (
 	"bytes"
-	"fmt"
-	"os/exec"
-	"strings"
-	"text/template"
 	"time"
 
 	"github.com/BurntSushi/xgb/xproto"
 )
 
+func Configure(h Handlr, chains []Chain) error {
+	var err error
+	for _, c := range chains {
+		err = c.Attach(h, h.Root())
+	}
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 type Chain interface {
-	Details
-	Activity
-	Key
-	AddCmd(*Cmd)
-	Cmd() *Cmd
+	Detailable
+	Commandable
+	Activitable
+	Keyable
 	Chainable
 }
 
-type Details interface {
+type Detailable interface {
 	Mechanic() int
 	Raw() string
 	String() string
 	Chained() string
 }
 
-type Activity interface {
+type Activitable interface {
 	Clear()
 	Active() (int64, bool)
 	Activated() bool
+}
+
+type Keyable interface {
+	Attach(Handlr, xproto.Window) error
+	Run(Handlr, string) error
 }
 
 type Chainable interface {
@@ -43,14 +54,27 @@ type Chainable interface {
 	Append(Chain)
 }
 
+type Commandable interface {
+	AddCommand(*Cmd)
+	Command() *Cmd
+}
+
+const (
+	NoMechanic    = 1
+	KeyPress      = xproto.KeyPress
+	KeyRelease    = xproto.KeyRelease
+	ButtonPress   = xproto.ButtonPress
+	ButtonRelease = xproto.ButtonRelease
+)
+
 type chain struct {
-	mec     int
-	expires int64
-	prev    Chain
-	next    Chain
-	khord   string
-	chord   string
-	cmd     *Cmd
+	mechanic int
+	expires  int64
+	prev     Chain
+	next     Chain
+	khord    string
+	chord    string
+	command  *Cmd
 }
 
 func (c *chain) expired() bool {
@@ -143,15 +167,15 @@ func (c *chain) Append(o Chain) {
 	c.Tail().SetNext(o)
 }
 
-func (c *chain) Cmd() *Cmd {
-	return c.cmd
+func (c *chain) Command() *Cmd {
+	return c.command
 }
 
-func (c *chain) AddCmd(cmd *Cmd) {
-	c.cmd = cmd
+func (c *chain) AddCommand(cmd *Cmd) {
+	c.command = cmd
 }
 
-func attach(c Chain, h XHandle, w xproto.Window) error {
+func attach(c Chain, h Handlr, w xproto.Window) error {
 	switch c.Mechanic() {
 	case KeyPress, KeyRelease:
 		mods, keycodes, err := ParseKeyInput(h.Keyboard(), c.String())
@@ -175,7 +199,7 @@ func attach(c Chain, h XHandle, w xproto.Window) error {
 	return nil
 }
 
-func (c *chain) Attach(h XHandle, w xproto.Window) error {
+func (c *chain) Attach(h Handlr, w xproto.Window) error {
 	var err error
 	err = attach(c, h, w)
 	if err != nil {
@@ -194,18 +218,17 @@ func (c *chain) Attach(h XHandle, w xproto.Window) error {
 	return nil
 }
 
-func (c *chain) Run(h XHandle, param string) error {
+func (c *chain) Run(h Handlr, param string) error {
 	c.touch()
 	if c.Activated() {
-		//spew.Dump(c.Head().Chained())
-		cmd := c.Cmd()
+		cmd := c.Command()
 		return cmd.Exec(param).Run()
 	}
 	return nil
 }
 
 func (c *chain) Mechanic() int {
-	return c.mec
+	return c.mechanic
 }
 
 func (c *chain) Raw() string {
@@ -218,7 +241,7 @@ func (c *chain) String() string {
 
 func (c *chain) Chained() string {
 	cmdstring := func(c Chain, b *bytes.Buffer) {
-		if cmd := c.Cmd(); cmd != nil {
+		if cmd := c.Command(); cmd != nil {
 			b.Write(cmd.Bytes())
 		}
 	}
@@ -238,9 +261,9 @@ func (c *chain) Chained() string {
 func newChain(in []byte) *chain {
 	chord, khord, mechanic := chordMechanic(in)
 	return &chain{
-		mec:   mechanic,
-		khord: khord,
-		chord: chord,
+		mechanic: mechanic,
+		khord:    khord,
+		chord:    chord,
 	}
 }
 
@@ -306,124 +329,4 @@ func mkChains(in [][][]byte) []Chain {
 		ret = append(ret, mkChain(v))
 	}
 	return ret
-}
-
-type Cmd struct {
-	raw  string
-	t    *template.Template
-	s    []*state
-	next *Cmd
-}
-
-func newCmd(in []byte) *Cmd {
-	t, raw, s := parseCmd(in)
-	return &Cmd{
-		raw: raw,
-		t:   t,
-		s:   s,
-	}
-}
-
-func parseCmd(in []byte) (*template.Template, string, []*state) {
-	var sts [][]byte
-	var raw string
-	r := rxMulti.ReplaceAllFunc(
-		in,
-		func(i []byte) []byte {
-			sts = append(sts, i)
-			return []byte(fmt.Sprintf("{{.var%d}}", len(sts)))
-		})
-	r2 := rxRangeInt.ReplaceAllFunc(
-		r,
-		func(i []byte) []byte {
-			return []byte("{{.p}}")
-		})
-	raw = string(r2)
-	tpl, err := template.New("cmd").Parse(raw)
-	if err != nil {
-		raw = err.Error()
-		tpl, _ = template.New("cmd").Parse(raw)
-	}
-	states := newStates(sts)
-	return tpl, raw, states
-}
-
-func (c *Cmd) Bytes() []byte {
-	ret := new(bytes.Buffer)
-	ret.WriteString("; (")
-	ret.WriteString(c.raw)
-	n := c.next
-	for n != nil {
-		ret.WriteString("; ")
-		ret.WriteString(n.raw)
-		n = n.next
-	}
-	ret.WriteString(")")
-	return ret.Bytes()
-}
-
-func (c *Cmd) String() string {
-	return string(c.Bytes())
-}
-
-func (c *Cmd) data(param string) map[string]string {
-	ret := make(map[string]string)
-	ret["p"] = param
-	for i, v := range c.s {
-		ret[fmt.Sprintf("var%d", i+1)] = v.Next()
-	}
-	return ret
-}
-
-func (c *Cmd) write(param string) string {
-	b := new(bytes.Buffer)
-	err := c.t.Execute(b, c.data(param))
-	if err != nil {
-		return err.Error()
-	}
-	return b.String()
-}
-
-func (c *Cmd) Exec(param string) *exec.Cmd {
-	spl := strings.Split(c.write(param), " ")
-	return exec.Command(spl[0], spl[1:]...)
-}
-
-type state struct {
-	index  int
-	values []string
-}
-
-func newStates(in [][]byte) []*state {
-	var ret []*state
-	for _, v := range in {
-		pre := bytes.Trim(v, "}{")
-		post := bytes.Split(pre, []byte(","))
-		var s []string
-		for _, o := range post {
-			s = append(s, string(o))
-		}
-		ret = append(ret, newState(s))
-	}
-	return ret
-}
-
-func newState(v []string) *state {
-	return &state{
-		index:  -1,
-		values: v,
-	}
-}
-
-func (s *state) incr() {
-	if (s.index + 1) == len(s.values) {
-		s.index = 0
-	} else {
-		s.index++
-	}
-}
-
-func (s *state) Next() string {
-	s.incr()
-	return s.values[s.index]
 }

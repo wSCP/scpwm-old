@@ -11,8 +11,8 @@ type tilr struct {
 	rectangle xproto.Rectangle
 }
 
-func newTilr(r xproto.Rectangle) *tilr {
-	return &tilr{rectangle: r}
+func newTilr() *tilr {
+	return &tilr{}
 }
 
 func (t *tilr) SetTiledRectangle(r xproto.Rectangle) {

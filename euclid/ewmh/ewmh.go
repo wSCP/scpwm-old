@@ -24,6 +24,7 @@ type EWMH interface {
 	WmStateGet(xproto.Window) ([]string, error)
 	WmStateSet(xproto.Window, []string) error
 	WmWindowTypeGet(xproto.Window) ([]string, error)
+	WmClassGet(xproto.Window) (string, string, error)
 }
 
 type ewmh struct {
@@ -32,7 +33,7 @@ type ewmh struct {
 	atom atomic.Atomic
 }
 
-func New(c *xgb.Conn, r xproto.Window, a atomic.Atomic) EWMH {
+func newEWMH(c *xgb.Conn, r xproto.Window, a atomic.Atomic) EWMH {
 	return &ewmh{
 		conn: c,
 		root: r,
@@ -151,3 +152,18 @@ func (e *ewmh) WmWindowTypeGet(w xproto.Window) ([]string, error) {
 //WM_WINDOW_TYPE_UTILITY
 
 //WM_WINDOW_TYPE_TOOLBAR
+
+var WmClassGetError = Xrror("Two strings make up WM_CLASS -- found %d in '%v'.").Out
+
+// WmClassGet returns the class and instance name of a window, as well as any error.
+func (e *ewmh) WmClassGet(w xproto.Window) (string, string, error) {
+	raw, err := e.atom.PropValStrs(e.atom.GetProp(w, "WM_CLASS"))
+	if err != nil {
+		return "", "", err
+	}
+	if len(raw) != 2 {
+		return "", "", WmClassGetError(len(raw), raw)
+	}
+
+	return raw[1], raw[0], nil
+}

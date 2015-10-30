@@ -1,16 +1,19 @@
 package clients
 
 import (
+	"github.com/BurntSushi/xgb"
 	"github.com/BurntSushi/xgb/xproto"
 )
 
 type Floatr interface {
-	Width(int)
-	Height(int)
-	Size(int, int)
-	Center(xproto.Rectangle)
+	Position(int16, int16)
+	Width(uint16)
+	Height(uint16)
+	Size(uint16, uint16)
+	Center(xproto.Rectangle, int16)
 	Embrace(xproto.Rectangle)
 	Translate(xproto.Rectangle, xproto.Rectangle)
+	UpdateFloatingRectangle(*xgb.Conn, xproto.Window)
 	SetFloatingRectangle(xproto.Rectangle)
 }
 
@@ -18,24 +21,23 @@ type floatr struct {
 	rectangle xproto.Rectangle
 }
 
-func newFloatr(r xproto.Rectangle) *floatr {
-	return &floatr{rectangle: r}
+func newFloatr() *floatr {
+	return &floatr{}
 }
 
-func (f *floatr) SetFloatingRectangle(r xproto.Rectangle) {
-	f.rectangle = r
-	//void update_floating_rectangle(client_t *c);
+func (f *floatr) Position(x, y int16) {
+	f.rectangle.X, f.rectangle.Y = x, y
 }
 
-func (f *floatr) Width(w int) {
-	//void restrain_floating_width(client_t *c, int *width);
+func (f *floatr) Width(w uint16) {
+	f.rectangle.Width = w
 }
 
-func (f *floatr) Height(h int) {
-	//void restrain_floating_height(client_t *c, int *height);
+func (f *floatr) Height(h uint16) {
+	f.rectangle.Height = h
 }
 
-func (f *floatr) Size(w, h int) {
+func (f *floatr) Size(w, h uint16) {
 	f.Width(w)
 	f.Height(h)
 }
@@ -60,58 +62,75 @@ func (f *floatr) Center(rect xproto.Rectangle, borderWidth int16) {
 }
 
 func (f *floatr) Embrace(monitor xproto.Rectangle) {
-	//cf := c.floater.rectangle
-	//if (cf.X + int16(cf.Width)) <= m.rectangle.X {
-	//	c.fRectangle.X = m.rectangle.X
-	//} else if cf.X >= (m.rectangle.X + int16(m.rectangle.Width)) {
-	//	c.fRectangle.X = (m.rectangle.X + int16(m.rectangle.Width)) - int16(c.fRectangle.Width)
-	//}
+	if (f.rectangle.X + int16(f.rectangle.Width)) <= monitor.X {
+		f.rectangle.X = monitor.X
+	} else if f.rectangle.X >= (monitor.X + int16(monitor.Width)) {
+		f.rectangle.X = (monitor.X + int16(monitor.Width)) - int16(f.rectangle.Width)
+	}
 
-	//if (cf.Y + int16(cf.Height)) <= m.rectangle.Y {
-	//	c.fRectangle.Y = m.rectangle.Y
-	//} else if cf.Y >= (m.rectangle.Y + int16(m.rectangle.Height)) {
-	//	c.fRectangle.Y = (m.rectangle.Y + int16(m.rectangle.Height)) - int16(c.fRectangle.Height)
-	//}
+	if (f.rectangle.Y + int16(f.rectangle.Height)) <= monitor.Y {
+		f.rectangle.Y = monitor.Y
+	} else if f.rectangle.Y >= (monitor.Y + int16(monitor.Height)) {
+		f.rectangle.Y = (monitor.Y + int16(monitor.Height)) - int16(f.rectangle.Height)
+	}
 }
 
-func (f *floatr) Translate(src, dst xproto.Rectangle) {
-	//func (m *Monitor) Translate(o *Monitor, c *Client) {
-	//if m.e.pointer.action == NoAction || m == o {
-	//	leftAdjust := max((m.rectangle.X - c.fRectangle.X), 0)
-	//	topAdjust := max((m.rectangle.Y - c.fRectangle.Y), 0)
-	//	rightAdjust := max((c.fRectangle.X+int16(c.fRectangle.Width))-(m.rectangle.X+int16(m.rectangle.Width)), 0)
-	//	bottomAdjust := max((c.fRectangle.Y+int16(c.fRectangle.Height))-(m.rectangle.Y+int16(m.rectangle.Height)), 0)
-	//	c.fRectangle.X += leftAdjust
-	//	c.fRectangle.Y += topAdjust
-	//	c.fRectangle.Width -= uint16(leftAdjust + rightAdjust)
-	//	c.fRectangle.Height -= uint16(topAdjust + bottomAdjust)
-	//
-	//		dx := c.fRectangle.X - m.rectangle.X
-	//		dy := c.fRectangle.Y - m.rectangle.Y
-	//
-	//		nx := dx * int16(o.rectangle.Width-c.fRectangle.Width)
-	//		ny := dy * int16(o.rectangle.Height-c.fRectangle.Height)
-	//
-	//		dnx := int16(m.rectangle.Width - c.fRectangle.Width)
-	//		dny := int16(m.rectangle.Height - c.fRectangle.Height)
-	//
-	//		var dxd, dyd int16
-	//		if dnx == 0 {
-	//			dxd = 0
-	//		} else {
-	//			dxd = nx / dnx
-	//		}
-	//
-	//		if dny == 0 {
-	//			dyd = 0
-	//		} else {
-	//			dyd = ny / dny
-	//		}
+func max(a, b int16) int16 {
+	if a > b {
+		return a
+	}
+	return b
+}
 
-	//		c.fRectangle.Width += uint16(leftAdjust + rightAdjust)
-	//		c.fRectangle.Height += uint16(topAdjust + bottomAdjust)
-	//		c.fRectangle.X = o.rectangle.X + dxd - leftAdjust
-	//		c.fRectangle.Y = o.rectangle.Y + dyd - topAdjust
-	//	}
-	//}
+func (f *floatr) Translate(m, o xproto.Rectangle) {
+	if m == o {
+		leftAdjust := max((m.X - f.rectangle.X), 0)
+		topAdjust := max((m.Y - f.rectangle.Y), 0)
+		rightAdjust := max((f.rectangle.X+int16(f.rectangle.Width))-(m.X+int16(m.Width)), 0)
+		bottomAdjust := max((f.rectangle.Y+int16(f.rectangle.Height))-(m.Y+int16(m.Height)), 0)
+		f.rectangle.X += leftAdjust
+		f.rectangle.Y += topAdjust
+		f.rectangle.Width -= uint16(leftAdjust + rightAdjust)
+		f.rectangle.Height -= uint16(topAdjust + bottomAdjust)
+
+		dx := f.rectangle.X - m.X
+		dy := f.rectangle.Y - m.Y
+
+		nx := dx * int16(o.Width-f.rectangle.Width)
+		ny := dy * int16(o.Height-f.rectangle.Height)
+
+		dnx := int16(m.Width - f.rectangle.Width)
+		dny := int16(m.Height - f.rectangle.Height)
+
+		var dxd, dyd int16
+		if dnx == 0 {
+			dxd = 0
+		} else {
+			dxd = nx / dnx
+		}
+
+		if dny == 0 {
+			dyd = 0
+		} else {
+			dyd = ny / dny
+		}
+
+		f.rectangle.Width += uint16(leftAdjust + rightAdjust)
+		f.rectangle.Height += uint16(topAdjust + bottomAdjust)
+		f.rectangle.X = o.X + dxd - leftAdjust
+		f.rectangle.Y = o.Y + dyd - topAdjust
+	}
+}
+
+func (f *floatr) UpdateFloatingRectangle(c *xgb.Conn, w xproto.Window) {
+	geo, _ := xproto.GetGeometry(c, xproto.Drawable(w)).Reply()
+
+	if geo != nil {
+		f.Position(geo.X, geo.Y)
+		f.Size(geo.Width, geo.Height)
+	}
+}
+
+func (f *floatr) SetFloatingRectangle(r xproto.Rectangle) {
+	f.rectangle = r
 }

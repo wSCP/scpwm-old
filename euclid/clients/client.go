@@ -4,8 +4,7 @@ import (
 	"github.com/BurntSushi/xgb"
 	"github.com/BurntSushi/xgb/xproto"
 
-	"github.com/thrisp/scpwm/euclid/ruler"
-	"github.com/thrisp/scpwm/euclid/windows"
+	"github.com/thrisp/scpwm/euclid/window"
 )
 
 type Client interface {
@@ -14,11 +13,11 @@ type Client interface {
 	Rectangle() xproto.Rectangle
 	Adjacent(Client, string) bool
 	SideHandle(string) *xproto.Point
-	Rules() []ruler.Rule
-	windows.Window
+	window.Window
 	Floatr
 	Tilr
 	State
+	Constraint
 	Bordr
 	Shiftr
 	Stackr
@@ -27,31 +26,30 @@ type Client interface {
 type client struct {
 	class    string
 	instance string
-	rules    []ruler.Rule
-	windows.Window
+	window.Window
 	*stackr
 	*floatr
 	*tilr
 	*state
+	*constraint
 	*bordr
 	*shiftr
 }
 
-func NewClient(class, instance string, c *xgb.Conn, x xproto.Window, r xproto.Window, rules ...ruler.Rule) Client {
-	//return &client{
-	//	class:    class,
-	//	instance: instance,
-	//	rules:    rules,
-	//}
-	// determine via rules --
-	//Window:   windows.New(c, x, r),
-	//stackr:   newStackr(),
-	//state:    newState(),
-	//tilr:     newTilr(),
-	//floatr:   newFloatr(),
-	//bordr:    newBordr(),
-	//shiftr:   newShiftr(),
-	return nil
+func NewClient(class, instance string, c *xgb.Conn, x xproto.Window, r xproto.Window) Client {
+	cl := &client{
+		class:      class,
+		instance:   instance,
+		Window:     window.New(c, x, r),
+		stackr:     newStackr(),
+		floatr:     newFloatr(),
+		tilr:       newTilr(),
+		state:      newState(),
+		constraint: newConstraint(),
+		bordr:      newBordr(),
+		shiftr:     newShiftr(),
+	}
+	return cl
 }
 
 func (c *client) Class() string {
@@ -60,10 +58,6 @@ func (c *client) Class() string {
 
 func (c *client) Instance() string {
 	return c.instance
-}
-
-func (c *client) Rules() []ruler.Rule {
-	return c.rules
 }
 
 func (c *client) Rectangle() xproto.Rectangle {

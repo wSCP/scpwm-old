@@ -1,20 +1,31 @@
 package clients
 
+import (
+	"github.com/BurntSushi/xgb"
+	"github.com/BurntSushi/xgb/xproto"
+)
+
 type Bordr interface {
+	BorderWidth() uint
+	SetBorderWidth(uint)
 	Draw(Client, bool, bool)
 	Color(bool, bool) uint32
 }
 
 type bordr struct {
 	borderWidth uint
-	minWidth    uint16
-	maxWidth    uint16
-	minHeight   uint16
-	maxHeight   uint16
 }
 
 func newBordr() *bordr {
 	return &bordr{}
+}
+
+func (b *bordr) BorderWidth() uint {
+	return b.borderWidth
+}
+
+func (b *bordr) SetBorderWidth(as uint) {
+	b.borderWidth = as
 }
 
 func (b *bordr) Draw(c Client, focusedWindow, focusedMonitor bool) {
@@ -68,4 +79,33 @@ func (b *bordr) Color(focusedWindow, focusedMonitor bool) uint32 {
 			return pxl
 	*/
 	return 0
+}
+
+func getColor(c *xgb.Conn, win xproto.Window, color string, pxl uint32) bool {
+	/*
+		reply := xproto.GetWindowAttributes(win, win, nil)
+		if reply != nil {
+			cm := reply.Colormap
+
+			if strings.Index(color, "#") == 0 {
+				var red, green, blue uint
+				if n, err := fmt.Sscanf(color, "%02x%02x%02x", &red, &green, &blue); n == 3 && err == nil {
+					red *= 0x101
+					green *= 0x101
+					blue *= 0x101
+					if r := xproto.AllocColorUnchecked(c, cm, red, green, blue); r != nil {
+						*pxl = r.Pixel
+						return true
+					}
+				}
+			} else {
+				if r := xproto.AllocNamedColorUnchecked(c, cm, uint16(len(color)), color); r != nil {
+					*pxl = r.Pixel
+					return true
+				}
+			}
+		}
+		pxl = 0
+	*/
+	return false
 }

@@ -1,5 +1,7 @@
 package query
 
+import "strings"
+
 type Direction int
 
 const (
@@ -174,6 +176,20 @@ var stringAge map[string]Age = map[string]Age{
 	"younger":  Younger,
 	"older":    Older,
 	"oldest":   Oldest,
+}
+
+func DetermineNode(from string) Node {
+	switch strings.ToLower(from) {
+	case "", "none":
+		return nodeNone
+	case "monitor", "screen":
+		return nodeMonitor
+	case "desktop", "workspace":
+		return nodeDesktop
+	case "window", "client":
+		return nodeClient
+	}
+	return nodeNone
 }
 
 type Node int

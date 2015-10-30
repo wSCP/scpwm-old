@@ -22,38 +22,42 @@ func Initialize(monitors *branch.Branch, x handler.Handler, s settings.Settings)
 	root := x.Root()
 
 	err := randr.Init(c)
-	if err == nil && Update(monitors, x, s) {
-		randr.SelectInputChecked(c, root, randr.NotifyMaskScreenChange)
-	} else {
-		err = xinerama.Init(c)
-		if err == nil {
-			xia, err := xinerama.IsActive(c).Reply()
-			if xia != nil && err == nil {
-				xsq, _ := xinerama.QueryScreens(c).Reply()
-				xsi := xsq.ScreenInfo
-				for i := 0; i < len(xsi); i++ {
-					info := xsi[i]
-					rect := xproto.Rectangle{info.XOrg, info.YOrg, info.Width, info.Height}
-					nm := NewMonitor(uint32(i), fmt.Sprintf("XMonitor%d", i), c, root, rect, s)
+	if err == nil {
+		if err := Update(monitors, x, s); err == nil {
+			randr.SelectInputChecked(c, root, randr.NotifyMaskScreenChange)
+		} else {
+			err = xinerama.Init(c)
+			if err == nil {
+				xia, err := xinerama.IsActive(c).Reply()
+				if xia != nil && err == nil {
+					xsq, _ := xinerama.QueryScreens(c).Reply()
+					xsi := xsq.ScreenInfo
+					for i := 0; i < len(xsi); i++ {
+						info := xsi[i]
+						rect := xproto.Rectangle{info.XOrg, info.YOrg, info.Width, info.Height}
+						nm := NewMonitor(uint32(i), fmt.Sprintf("XMonitor%d", i), c, root, rect, s)
+						monitors.PushBack(nm)
+					}
+				} else {
+					scr := x.Screen()
+					rect := xproto.Rectangle{0, 0, scr.WidthInPixels, scr.HeightInPixels}
+					nm := NewMonitor(1, "SCREEN", c, root, rect, s)
 					monitors.PushBack(nm)
 				}
-			} else {
-				scr := x.Screen()
-				rect := xproto.Rectangle{0, 0, scr.WidthInPixels, scr.HeightInPixels}
-				nm := NewMonitor(1, "SCREEN", c, root, rect, s)
-				monitors.PushBack(nm)
 			}
 		}
 	}
 }
 
-func Update(monitors *branch.Branch, x handler.Handler, s settings.Settings) bool {
+var UpdateError = Xrror("Monitors update error: %s").Out
+
+func Update(monitors *branch.Branch, x handler.Handler, s settings.Settings) error {
 	c := x.Conn()
 	root := x.Root()
 
 	sres, err := randr.GetScreenResources(c, root).Reply()
 	if err != nil {
-		return false
+		return err
 	}
 
 	var r []*randr.GetOutputInfoReply
@@ -65,7 +69,7 @@ func Update(monitors *branch.Branch, x handler.Handler, s settings.Settings) boo
 	curr := monitors.Front()
 	for curr != nil {
 		m := curr.Value.(Monitor)
-		m.SetWired(false)
+		m.Set("wired", false)
 		curr = curr.Next()
 	}
 
@@ -79,7 +83,7 @@ func Update(monitors *branch.Branch, x handler.Handler, s settings.Settings) boo
 					if m != nil {
 						m.SetRectangle(rect)
 						m.UpdateRoot()
-						m.SetWired(true)
+						m.Set("wired", true)
 					} else {
 						nm := NewMonitor(uint32(sres.Outputs[i]), string(info.Name), c, root, rect, s)
 						monitors.PushBack(nm)
@@ -88,7 +92,7 @@ func Update(monitors *branch.Branch, x handler.Handler, s settings.Settings) boo
 			} else if !s.Bool("RemoveDisabled") && info.Connection != randr.ConnectionDisconnected {
 				m := fromId(monitors, uint32(sres.Outputs[i]))
 				if m != nil {
-					m.SetWired(true)
+					m.Set("wired", true)
 				}
 			}
 		}
@@ -112,7 +116,12 @@ func Update(monitors *branch.Branch, x handler.Handler, s settings.Settings) boo
 		removeUnplugged(monitors)
 	}
 
-	return monitors.Len() > 0
+	ml := monitors.Len()
+	if ml > 0 {
+		return nil
+	} else {
+		return UpdateError("Monitors update returned length %d monitors", ml)
+	}
 }
 
 func contains(a, b xproto.Rectangle) bool {
@@ -149,17 +158,6 @@ func removeUnplugged(monitors *branch.Branch) {
 		return nil
 	}
 	update(monitors, fn)
-}
-
-func All(monitors *branch.Branch) []Monitor {
-	var ret []Monitor
-	curr := monitors.Front()
-	for curr != nil {
-		mon := curr.Value.(Monitor)
-		ret = append(ret, mon)
-		curr = curr.Next()
-	}
-	return ret
 }
 
 type MatchMonitor func(Monitor) bool
@@ -224,11 +222,23 @@ func Focused(monitors *branch.Branch) Monitor {
 	return seek(monitors, isFocused)
 }
 
-func Last(monitors *branch.Branch) Monitor {
-	fn := func(m Monitor) bool {
-		return m.Last()
+func Focus(monitors *branch.Branch, mon Monitor) {
+	focused := Focused(monitors)
+	focused.Set("focused", false)
+	mon.Focus()
+}
+
+func FocusDirection(monitors *branch.Branch, direction string) {
+	current := Focused(monitors)
+	var toFocus Monitor
+	switch direction {
+	case "next":
+		toFocus = Next(monitors)
+	case "previous":
+		toFocus = Prev(monitors)
 	}
-	return seek(monitors, fn)
+	toFocus.Focus()
+	current.Set("focus", false)
 }
 
 func Next(monitors *branch.Branch) Monitor {
@@ -237,6 +247,24 @@ func Next(monitors *branch.Branch) Monitor {
 
 func Prev(monitors *branch.Branch) Monitor {
 	return seekoffset(monitors, isFocused, -1)
+}
+
+func seekAny(monitors *branch.Branch, fn MatchMonitor) []Monitor {
+	var ret []Monitor
+	curr := monitors.Front()
+	for curr != nil {
+		mon := curr.Value.(Monitor)
+		if match := fn(mon); match {
+			ret = append(ret, mon)
+		}
+		curr = curr.Next()
+	}
+	return ret
+}
+
+func All(monitors *branch.Branch) []Monitor {
+	fn := func(m Monitor) bool { return true }
+	return seekAny(monitors, fn)
 }
 
 type UpdateMonitor func(Monitor) error

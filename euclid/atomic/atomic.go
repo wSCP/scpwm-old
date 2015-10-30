@@ -68,12 +68,6 @@ func New(c *xgb.Conn) Atomic {
 
 var AtomIdError = Xrror("atom: '%s' returned an identifier of 0.").Out
 
-//func (a *atomic) init() {
-//	a.Atom("WM_DELETE_WINDOW")
-//	a.Atom("WM_TAKE_FOCUS")
-//	a.Atom("_BSPWM_FLOATING_WINDOW")
-//}
-
 func (a *atomic) Atom(name string) (xproto.Atom, error) {
 	aid, err := a.atom(name, false)
 	if err != nil {

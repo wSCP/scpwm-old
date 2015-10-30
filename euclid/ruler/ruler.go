@@ -10,7 +10,7 @@ import (
 type Ruler interface {
 	Rule(...string) bool
 	Unrule(...string) bool
-	Applicable(xproto.Window) ([]Rule, bool)
+	Applicable(xproto.Window) []Rule
 	Pending() []Rule
 }
 
@@ -68,8 +68,8 @@ func (r *ruler) remove(d string) bool {
 	return false
 }
 
-func (r *ruler) Applicable(w xproto.Window) ([]Rule, bool) {
-	return nil, false
+func (r *ruler) Applicable(w xproto.Window) []Rule {
+	return nil
 }
 
 func (r *ruler) Pending() []Rule {

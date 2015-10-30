@@ -6,20 +6,9 @@ func New() *branch.Branch {
 	return branch.New("clients")
 }
 
-func All(clients *branch.Branch) []Client {
-	var ret []Client
-	curr := clients.Front()
-	for curr != nil {
-		c := curr.Value.(Client)
-		ret = append(ret, c)
-		curr = curr.Next()
-	}
-	return ret
-}
+type MatchClient func(Client) bool
 
-type SelectClient func(Client) bool
-
-func seek(clients *branch.Branch, fn SelectClient) Client {
+func seek(clients *branch.Branch, fn MatchClient) Client {
 	curr := clients.Front()
 	for curr != nil {
 		client := curr.Value.(Client)
@@ -31,7 +20,7 @@ func seek(clients *branch.Branch, fn SelectClient) Client {
 	return nil
 }
 
-func seekOffset(clients *branch.Branch, fn SelectClient, offset int) Client {
+func seekOffset(clients *branch.Branch, fn MatchClient, offset int) Client {
 	curr := clients.Front()
 	for curr != nil {
 		client := curr.Value.(Client)
@@ -47,4 +36,35 @@ func seekOffset(clients *branch.Branch, fn SelectClient, offset int) Client {
 		curr = curr.Next()
 	}
 	return nil
+}
+
+func isFocused(c Client) bool {
+	if c.Focused() {
+		return true
+	}
+	return false
+}
+
+func Focused(clients *branch.Branch) Client {
+	return seek(clients, isFocused)
+}
+
+func seekAny(clients *branch.Branch, fn MatchClient) []Client {
+	var ret []Client
+	curr := clients.Front()
+	for curr != nil {
+		client := curr.Value.(Client)
+		if match := fn(client); match {
+			ret = append(ret, client)
+		}
+		curr = curr.Next()
+	}
+	return ret
+}
+
+func All(clients *branch.Branch) []Client {
+	fn := func(c Client) bool {
+		return true
+	}
+	return seekAny(clients, fn)
 }

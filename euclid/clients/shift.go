@@ -40,11 +40,11 @@ type shiftr struct {
 	direction   ShiftDirection
 }
 
-func newShifter() *shiftr {
+func newShiftr() *shiftr {
 	return &shiftr{}
 }
 
-func SetShift(k, v string) {
+func (s *shiftr) SetShift(k, v string) {
 	switch k {
 	case "rotate":
 		//

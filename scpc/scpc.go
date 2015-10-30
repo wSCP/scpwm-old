@@ -42,7 +42,7 @@ func send(args []string) []byte {
 	var r []int
 	for i, v := range args {
 		switch v {
-		case "-v", "-t", "-p", "-e":
+		case "-verbose", "-timeout", "-path", "-env":
 			r = append(r, i, i+1)
 		}
 	}
@@ -174,9 +174,9 @@ func main() {
 }
 
 func init() {
-	flag.StringVar(&socketEnv, "e", socketEnv, "Read the socket from the given env variable")
-	flag.StringVar(&socketPath, "p", defaulSocketPath(), "Read the socket from the given path.")
-	flag.DurationVar(&responseTimeout, "t", responseTimeout, "Wait only specified seconds euclid's response, default is 2")
-	flag.BoolVar(&verbose, "v", verbose, "Verbose logging messages, default is false.")
+	flag.StringVar(&socketEnv, "env", socketEnv, "Read the socket from the given env variable")
+	flag.StringVar(&socketPath, "path", defaulSocketPath(), "Read the socket from the given path.")
+	flag.DurationVar(&responseTimeout, "timeout", responseTimeout, "Wait only specified seconds euclid's response, default is 2")
+	flag.BoolVar(&verbose, "verbose", verbose, "Verbose logging messages, default is false.")
 	flag.Parse()
 }

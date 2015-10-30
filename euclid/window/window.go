@@ -1,4 +1,4 @@
-package windows
+package window
 
 import (
 	"github.com/BurntSushi/xgb"
@@ -7,10 +7,11 @@ import (
 
 type Window interface {
 	Conn() *xgb.Conn
+	XRoot() xproto.Window
 	XWindow() xproto.Window
 	Close()
 	Kill()
-	SetBorderWidth(uint32)
+	SetXBorderWidth(uint32)
 	Move(int16, int16)
 	Resize(uint16, uint16)
 	MoveResize(int16, int16, uint16, uint16)
@@ -37,6 +38,10 @@ func (w *window) Conn() *xgb.Conn {
 	return w.c
 }
 
+func (w *window) XRoot() xproto.Window {
+	return w.r
+}
+
 func (w *window) XWindow() xproto.Window {
 	return w.w
 }
@@ -49,7 +54,7 @@ func (w *window) Kill() {
 	xproto.KillClientChecked(w.c, uint32(w.w))
 }
 
-func (w *window) SetBorderWidth(bw uint32) {
+func (w *window) SetXBorderWidth(bw uint32) {
 	xproto.ConfigureWindowChecked(w.c, w.w, xproto.ConfigWindowBorderWidth, []uint32{bw})
 }
 

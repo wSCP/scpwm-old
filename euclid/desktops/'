@@ -105,14 +105,8 @@ func (m *Manager) SignalHandler(sig os.Signal) {
 	}
 }
 
-func (m *Manager) Current() (monitors.Monitor, desktops.Desktop, clients.Client) {
-	var mon monitors.Monitor
-	var dsk desktops.Desktop
-	var clt clients.Client
-	mon = monitors.Focused(m.Branch)
-	dsk = desktops.Focused(mon.Desktops())
-	clt = clients.Focused(dsk.Clients())
-	return mon, dsk, clt
+func Current() (monitors.Monitor, desktops.Desktop, clients.Client) {
+	return nil, nil, nil
 }
 
 func (m *Manager) Tree() *branch.Branch {
@@ -154,13 +148,13 @@ func (m *Manager) SetEventFns() {
 	m.SetEventFn("ScreenChange", m.ScreenChange)
 }
 
-var EventError = Xrror("Event : %+v is not recognized despite being passed to Manager function %s.").Out
+var EventError = Xrror("Event : %+v is not recognized despite being passed to an appropriate Manager function.").Out
 
 func (m *Manager) MapRequest(evt xgb.Event) error {
 	if mr, ok := evt.(xproto.MapRequestEvent); ok {
 		m.schedule(mr.Window)
 	}
-	return EventError(evt, "MapRequest")
+	return EventError(evt)
 }
 
 func (m *Manager) exists(win xproto.Window) bool {
@@ -203,18 +197,17 @@ func (m *Manager) manage(win xproto.Window, rules []ruler.Rule) {
 	//mon, desk, f = locate monitor as mon
 	//case ruler.IsSticky:
 	//case ruler.SetSplitDirection:
-	//if f != nil {
+	//	if f != nil {
 	//		//f.splitM = manual
 	//		//f.splitd = r.String() to split direction
-	//}
+	//	}
 	//case ruler.SetSplitRatio:
-	//if f != nil {
+	//	if f != nil {
 	//		//f.splitR = rule.splitRatio
+	//	}
 	//}
 	//}
-	//}
-
-	//client := clients.NewClient(class, instance string, c *xgb.Conn, x xproto.Window, r xproto.Window)
+	// make client
 	// update client rectangle, max widths & heights
 	// embrace & translate to monitor
 
@@ -236,118 +229,26 @@ func (m *Manager) manage(win xproto.Window, rules []ruler.Rule) {
 func (m *Manager) ConfigureRequest(evt xgb.Event) error {
 	if cr, ok := evt.(xproto.ConfigureRequestEvent); ok {
 		client, exists := m.locate(cr.Window)
-		//var w, h uint16
+		var w, h int
 		if exists && client.Tiled() {
-			//if (cr.ValueMask & xproto.ConfigWindowX) != 0 {
-			//c->floating_rectangle.x = e->x;
+			//if (cr.ValueMask && xproto.ConfigWindowX {
+			//
 			//}
-			//if (cr.ValueMask & xproto.ConfigWindowY) != 0 {
-			//c->floating_rectangle.y = e->y
+			//if cr.ValueMask & xproto.ConfigWindowY {
+			//
 			//}
-			//if (cr.ValueMask & xproto.ConfigWindowHeight) != 0 {
-			//	w = cr.Width
+			//if cr.ValueMask & xproto.ConfigWindowHeight {
+			//
 			//}
-			//if (cr.ValueMask & xproto.ConfigWindowWidth) != 0 {
-			//	h = cr.Height
+			//if cr.ValueMask & xproto.ConfigWindowWidth {
+			//
 			//}
-			//if w != 0 {
-			//restrain_floating_width(c, &w);
-			//c->floating_rectangle.width = w;
-			//}
-			//if h != 0 {
-			//restrain_floating_height(c, &h);
-			//c->floating_rectangle.height = h;
-			//}
-
-			//var evt xproto.ConfigureNotifyEvent
-			//var rect xproto.Rectangle
-			//win := client.XWindow()
-			//bw := client.BorderWidth()
-
-			//if (c->fullscreen)
-			//	rect = loc.monitor->rectangle;
-			//else
-			//	rect = c->tiled_rectangle;
-
-			//evt.Event = win
-			//evt.Window = win
-			//evt.AboveSibling = xproto.WindowNone
-			//evt.X = rect.X
-			//evt.Y = rect.Y
-			//evt.Width = rect.Width
-			//evt.Height = rect.Height
-			//evt.BorderWidth = bw
-			//evt.OverrideRedirect = false
-
-			//xproto.SendEvent(m.Conn(), false, win, EventMask uint32, evt.String())
-			//xcb_send_event(dpy, false, win, XCB_EVENT_MASK_STRUCTURE_NOTIFY, (const char *) &evt);
-
-			//if (c->pseudo_tiled)
-			//	arrange(loc.monitor, loc.desktop);
 		} else {
-			//var mask uint16
-			//var value [7]uint32
-			//var i int
-			//if (cr.ValueMask & xproto.ConfigWindowX) != 0 {
-			//mask |= xproto.ConfigWindowX
-			//values[i] = cr.X
-			//if exists {
-			//c->floating_rectangle.x = e->x
-			//}
-			//}
-			//if (cr.ValueMask & xproto.ConfigWindowY) != 0 {
-			//mask |= xproto.ConfigWindowY
-			//i++
-			//value[i] = cr.Y
-			//if exists {
-			//	c->floating_rectangle.y = e->y;
-			//}
-			//}
-			//if (cr.ValueMask & xproto.ConfigWindowHeight) != 0 {
-			//mask |= xproto.ConfigWindowHeight
-			//w = cr.Width
-			//if exists {
-			//restrain_floating_width(c, &w);
-			//c->floating_rectangle.width = w;
-			//}
-			//i++
-			//values[i] = cr.Height
 
-			//}
-			//if (cr.ValueMask & xproto.ConfigWindowWidth) != 0 {
-			//mask |= xproto.ConfigWindowWidth
-			//h = cr.Height
-			//if exists {
-			//restrain_floating_height(c, &h);
-			//c->floating_rectangle.height = h;
-			//}
-			//i++
-			//values[i] = cr.Width
-			//}
-			//if !exists && (cr.ValueMask & xproto.ConfigWindowBorderWidth) != 0 {
-			// mask |= xproto.ConfigWindowBorderWidth
-			// i++
-			// values[i] = cr.BorderWidth
-			//}
-			//if (cr.ValueMask & xproto.ConfigWindowSibling) != 0 {
-			// mask |= xproto.ConfigWindowSibling
-			// i++
-			//value[i] = cr.WindowSibling
-			//}
-			//if (cr.ValueMask & xproto.ConfigWindowStackMode) != 0 {
-			// mask |= xproto.ConfigWindowStackMode
-			// i++
-			// values[i] = cr.WindowStackMode
-			//}
-
-			//xproto.ConfigureWindow(m.Conn(), cr.Window, mask, values)
 		}
-		//if exists {
-		//translate_client(monitor_from_client(c), loc.monitor, c);
-		//}
 		return nil
 	}
-	return EventError(evt, "ConfigureRequest")
+	return EventError(evt)
 }
 
 func (m *Manager) unmanage(win xproto.Window) error {
@@ -358,76 +259,52 @@ func (m *Manager) DestroyNotify(evt xgb.Event) error {
 	if dn, ok := evt.(xproto.DestroyNotifyEvent); ok {
 		return m.unmanage(dn.Window)
 	}
-	return EventError(evt, "DestroyNotify")
+	return EventError(evt)
 }
 
 func (m *Manager) UnmapNotify(evt xgb.Event) error {
 	if un, ok := evt.(xproto.UnmapNotifyEvent); ok {
 		return m.unmanage(un.Window)
 	}
-	return EventError(evt, "UnmapNotify")
+	return EventError(evt)
 }
 
 func (m *Manager) PropertyNotify(evt xgb.Event) error {
 	if pn, ok := evt.(xproto.PropertyNotifyEvent); ok {
-		if pn.Atom == xproto.AtomWmHints || pn.Atom == xproto.AtomWmNormalHints {
-			if m.exists(pn.Window) {
-				switch pn.Atom {
-				case xproto.AtomWmHints:
-					//
-				case xproto.AtomWmNormalHints:
-					//
-				}
-				return nil
-			}
+		if m.locate(pn.Window) {
+			return nil
 		}
 		return nil
 	}
-	return EventError(evt, "PropertyNotify")
+	return EventError(evt)
 }
 
 func (m *Manager) ClientMessage(evt xgb.Event) error {
-	//if cm, ok := evt.(xproto.ClientMessageEvent); ok {
-	//var a xproto.Atom
-	//var err error
-	//if a, err = m.Atomic.Atom("_NET_CURRENT_DESKTOP"); err == nil {
-	//if cm.Type == a {
-	//}
-	//}
-	//if exists = m.locate(cm.Window); exists {
-	//if a, err = m.Atomic.Atom("_NET_WM_STATE"); e.Type == a {
-	//}
-	//if a, err = m.Atomic.Atom("_NET_ACTIVE_WINDOW"); e.Type == a {
-	//}
-	//if a, err = m.Atomic.Atom("_NET_WM_DESKTOP"); e.Type == a  {
-	//}
-	//if a, err = m.Atomic.Atom("_NET_CLOSE_WINDOW"); e.Type == a {
-	//}
-	//}
-	//return err
-	//}
-	return EventError(evt, "ClientMessage")
+	if cm, ok := evt.(xproto.ClientMessageEvent); ok {
+		return nil
+	}
+	return EventError(evt)
 }
 
 func (m *Manager) FocusIn(evt xgb.Event) error {
-	//if fi, ok := evt.(xproto.FocusInEvent); ok {
-	//	return nil
-	//}
-	return EventError(evt, "FocusIn")
+	if fi, ok := evt.(xproto.FocusInEvent); ok {
+		return nil
+	}
+	return EventError(evt)
 }
 
 func (m *Manager) EnterNotify(evt xgb.Event) error {
-	//if en, ok := evt.(xproto.EnterNotifyEvent); ok {
-	//	return nil
-	//}
-	return EventError(evt, "EnterNotify")
+	if en, ok := evt.(xproto.EnterNotifyEvent); ok {
+		return nil
+	}
+	return EventError(evt)
 }
 
 func (m *Manager) MotionNotify(evt xgb.Event) error {
-	//if mn, ok := evt.(xproto.MotionNotifyEvent); ok {
-	//	return nil
-	//}
-	return EventError(evt, "MotionNotify")
+	if mn, ok := evt.(xproto.MotionNotifyEvent); ok {
+		return nil
+	}
+	return EventError(evt)
 }
 
 func (m *Manager) ScreenChange(evt xgb.Event) error {

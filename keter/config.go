@@ -18,24 +18,7 @@ const (
 	SEMICOLON    = byte(';')
 	COMMA        = byte(',')
 	DASH         = byte('-')
-	//SEQ_NONE  = byte('_')
 )
-
-func Configure(chains []Chain) (XHandle, error) {
-	X, err := NewXHandle("")
-	if err != nil {
-		return nil, err
-	}
-
-	for _, c := range chains {
-		err = c.Attach(X, X.Root())
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	return X, nil
-}
 
 func LoadConfig(f string) ([]Chain, error) {
 	file, err := os.Open(f)
@@ -160,7 +143,7 @@ func parseChains(o []*order) ([]Chain, error) {
 		cns := od.chainKeys()
 		cc := od.chainCmds()
 		for _, cn := range cns {
-			cn.Tail().AddCmd(cc)
+			cn.Tail().AddCommand(cc)
 		}
 		ret = append(ret, cns...)
 	}

@@ -26,7 +26,7 @@ var EwmhSupported []string = []string{
 func DefaultSettings() Settings {
 	s := make(store)
 	s.add("WindowManagerName", "scpwm")
-	//s.add("ExternalRulesCommand", "TBD")
+	//s.add("ExternalRulesCommand", "")
 	s.add("StatusPrefix", "W")
 	s.add("SplitRatio", "0.5")
 	s.add("WindowGap", "6")

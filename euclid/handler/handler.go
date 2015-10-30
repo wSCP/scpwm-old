@@ -2,28 +2,22 @@ package handler
 
 import (
 	"log"
-	"os"
 	"sync"
 
 	"github.com/BurntSushi/xgb"
 	"github.com/BurntSushi/xgb/randr"
 	"github.com/BurntSushi/xgb/xproto"
-	"github.com/davecgh/go-spew/spew"
+	"github.com/thrisp/scpwm/euclid/atomic"
+	"github.com/thrisp/scpwm/euclid/ewmh"
 )
-
-//var (
-//	RootEventMask   uint32 = (xproto.EventMaskSubstructureNotify | xproto.EventMaskSubstructureRedirect)
-//	ClientEventMask uint32 = (xproto.EventMaskPropertyChange | xproto.EventMaskFocusChange)
-//)
 
 type Handler interface {
 	Connectr
 	Informr
 	Eventr
-	//Windowr
-	//Focusr
-	//atomic.Atomic
-	//Ewmh
+	Callr
+	atomic.Atomic
+	ewmh.Ewmh
 }
 
 type Connectr interface {
@@ -34,8 +28,6 @@ type Informr interface {
 	Setup() *xproto.SetupInfo
 	Screen() *xproto.ScreenInfo
 	Root() xproto.Window
-	//Meta() xproto.Window
-	//Motion() xproto.Window
 }
 
 type Eventr interface {
@@ -54,29 +46,238 @@ type Endr interface {
 type Call func(xgb.Event) error
 
 type Callr interface {
-	Call(xgb.Event)
+	SetEventFn(string, Call)
+	Call(string, xgb.Event)
 }
 
 type handler struct {
 	*log.Logger
-	conn   *xgb.Conn
-	setup  *xproto.SetupInfo
-	screen *xproto.ScreenInfo
-	root   xproto.Window
-	//meta    xproto.Window
-	//motion  xproto.Window
-	Events  []evnt
-	EvtsLck *sync.RWMutex
-	call    map[xgb.Event]Call
+	conn    *xgb.Conn
+	setup   *xproto.SetupInfo
+	screen  *xproto.ScreenInfo
+	root    xproto.Window
+	events  []evnt
+	evtsLck *sync.RWMutex
+	call    map[string]Call
 	callLck *sync.RWMutex
 	end     bool
-	//Windowr
-	//atomic.Atomic
-	//Ewmh
-	//Pointer
+	atomic.Atomic
+	ewmh.Ewmh
+}
+
+func New(display string, ewhm []string, logr *log.Logger) (Handler, error) {
+	c, err := xgb.NewConnDisplay(display)
+	if err != nil {
+		return nil, err
+	}
+
+	setup := xproto.Setup(c)
+	screen := setup.DefaultScreen(c)
+
+	h := &handler{
+		Logger:  logr,
+		conn:    c,
+		setup:   setup,
+		screen:  screen,
+		root:    screen.Root,
+		events:  make([]evnt, 0, 1000),
+		evtsLck: &sync.RWMutex{},
+		call:    make(map[string]Call),
+		callLck: &sync.RWMutex{},
+	}
+
+	h.Atomic = atomic.New(h.conn)
+	h.Atomic.Atom("WM_DELETE_WINDOW")
+	h.Atomic.Atom("WM_TAKE_FOCUS")
+	h.Atomic.Atom("_SCPWM_FLOATING_WINDOW")
+
+	e := ewmh.New(h.conn, h.root, h.Atomic)
+	//err = EWMH.SupportedSet(ewhm)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//h.Ewmh.Set("string name", h.root, h.meta)
+	h.Ewmh = e
+
+	return h, nil
+}
+
+func (h *handler) Conn() *xgb.Conn {
+	return h.conn
+}
+
+func (h *handler) Setup() *xproto.SetupInfo {
+	return h.setup
+}
+
+func (h *handler) Screen() *xproto.ScreenInfo {
+	return h.screen
+}
+
+func (h *handler) Root() xproto.Window {
+	return h.root
+}
+
+func (h *handler) Empty() bool {
+	h.evtsLck.Lock()
+	defer h.evtsLck.Unlock()
+
+	return len(h.events) == 0
+}
+
+func (h *handler) End() {
+	h.end = true
+}
+
+func (h *handler) Ending() bool {
+	return h.end
+}
+
+type evnt struct {
+	evt xgb.Event
+	err xgb.Error
+}
+
+func (h *handler) Enqueue(evt xgb.Event, err xgb.Error) {
+	h.evtsLck.Lock()
+	defer h.evtsLck.Unlock()
+
+	h.events = append(h.events, evnt{
+		evt: evt,
+		err: err,
+	})
+}
+
+func (h *handler) Dequeue() (xgb.Event, xgb.Error) {
+	h.evtsLck.Lock()
+	defer h.evtsLck.Unlock()
+
+	e := h.events[0]
+	h.events = h.events[1:]
+	return e.evt, e.err
+}
+
+func (h *handler) Handle(pre, post, quit chan struct{}) {
+	for {
+		if h.Ending() {
+			if quit != nil {
+				quit <- struct{}{}
+			}
+			break
+		}
+
+		h.read()
+
+		h.process(pre, post)
+	}
+}
+
+func (h *handler) read() {
+	ev, err := h.Conn().WaitForEvent()
+	if ev == nil && err == nil {
+		h.Fatal("BUG: Could not read an event or an error.")
+	}
+	h.Enqueue(ev, err)
+}
+
+func (h *handler) process(pre, post chan struct{}) {
+	for !h.Empty() {
+		if h.Ending() {
+			return
+		}
+
+		pre <- struct{}{}
+
+		ev, err := h.Dequeue()
+
+		if err != nil {
+			h.Println(err.Error())
+			post <- struct{}{}
+			continue
+		}
+
+		if ev == nil {
+			h.Fatal("BUG: Expected an event but got nil.")
+		}
+
+		var tag string
+		switch ev.(type) {
+		case xproto.MapRequestEvent:
+			tag = "MapRequest"
+		case xproto.DestroyNotifyEvent:
+			tag = "DestroyNotify"
+		case xproto.UnmapNotifyEvent:
+			tag = "UnmapNotify"
+		case xproto.ClientMessageEvent:
+			tag = "ClientMessage"
+		case xproto.ConfigureRequestEvent:
+			tag = "ConfigureRequest"
+		case xproto.PropertyNotifyEvent:
+			tag = "PropertyNotify"
+		case xproto.EnterNotifyEvent:
+			tag = "EnterNotify"
+		case xproto.MotionNotifyEvent:
+			tag = "MotionNotify"
+		case xproto.FocusInEvent:
+			tag = "FocusIn"
+		case randr.ScreenChangeNotifyEvent:
+			tag = "ScreenChange"
+		}
+
+		if tag != "" {
+			h.Call(tag, ev)
+		}
+
+		post <- struct{}{}
+	}
+}
+
+func (h *handler) SetEventFn(tag string, fn Call) {
+	h.callLck.Lock()
+	defer h.callLck.Unlock()
+	h.call[tag] = fn
+}
+
+func (h *handler) Call(tag string, evt xgb.Event) {
+	h.callLck.Lock()
+	defer h.callLck.Unlock()
+	if fn, ok := h.call[tag]; ok {
+		err := fn(evt)
+		if err != nil {
+			h.Println("ERROR: %s", err.Error())
+		}
+	}
 }
 
 /*
+//mr := NewMotionRecorder(h.conn, h.root, h.motion)
+//h.Pointer = NewPointer(mr)
+
+//h.Windowr = NewWindowr(h.conn, h.root)
+
+//h.Monitors = NewMonitors(h)
+*/
+
+/*
+//func (h *handler) Meta() xproto.Window {
+//	return h.meta
+//}
+
+//func (h *handler) Motion() xproto.Window {
+//	return h.motion
+//}
+
+//meta:    meta,
+//motion:  motion,
+//meta, err := mkMeta(screen, c)
+//if err != nil {
+//	return nil, err
+//}
+//motion, err := mkMotion(screen, c)
+//if err != nil {
+//	return nil, err
+//}
+
 func mkMeta(s *xproto.ScreenInfo, c *xgb.Conn) (xproto.Window, error) {
 	meta, err := xproto.NewWindowId(c)
 	if err != nil {
@@ -102,213 +303,11 @@ func mkMeta(s *xproto.ScreenInfo, c *xgb.Conn) (xproto.Window, error) {
 	return meta, nil
 }
 
-func mkMotion(s *xproto.ScreenInfo, c *xgb.Conn) (xproto.Window, error) {
-	motion, err := xproto.NewWindowId(c)
-	if err != nil {
-		return motion, err
-	}
-	xproto.CreateWindow(
-		c,
-		s.RootDepth,
-		motion,
-		s.Root,
-		0,
-		0,
-		s.WidthInPixels,
-		s.HeightInPixels,
-		0,
-		xproto.WindowClassInputOnly,
-		s.RootVisual,
-		xproto.CwEventMask,
-		[]uint32{xproto.EventMaskPointerMotion},
-	)
-	xproto.MapWindow(c, motion)
-	return motion, nil
-}
-*/
-func New(display string, ewhm []string) (Handler, error) {
-	c, err := xgb.NewConnDisplay(display)
-	if err != nil {
-		return nil, err
-	}
 
-	setup := xproto.Setup(c)
-	screen := setup.DefaultScreen(c)
-
-	//meta, err := mkMeta(screen, c)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//motion, err := mkMotion(screen, c)
-	//if err != nil {
-	//	return nil, err
-	//}
-
-	h := &handler{
-		Logger: log.New(os.Stderr, "[SCPWM] Handler ", log.Ldate|log.Lmicroseconds),
-		conn:   c,
-		setup:  setup,
-		screen: screen,
-		root:   screen.Root,
-		//meta:    meta,
-		//motion:  motion,
-		Events:  make([]evnt, 0, 1000),
-		EvtsLck: &sync.RWMutex{},
-	}
-
-	//mr := NewMotionRecorder(h.conn, h.root, h.motion)
-	//h.Pointer = NewPointer(mr)
-
-	//h.Windowr = NewWindowr(h.conn, h.root)
-
-	//h.Atomic = atomic.New(h.conn)
-
-	//EWMH := ewmh.New(h.conn, h.root, h.Atomic)
-	//err = EWMH.SupportedSet(ewhm)
-	//if err != nil {
-	//	return nil, err
-	//}
-
-	//h.Ewmh = NewEwmh(EWMH)
-	//h.Ewmh.Set("string name", h.root, h.meta)
-
-	//h.Monitors = NewMonitors(h)
-
-	return h, nil
-}
-
-func (h *handler) Conn() *xgb.Conn {
-	return h.conn
-}
-
-func (h *handler) Setup() *xproto.SetupInfo {
-	return h.setup
-}
-
-func (h *handler) Screen() *xproto.ScreenInfo {
-	return h.screen
-}
-
-func (h *handler) Root() xproto.Window {
-	return h.root
-}
-
-//func (h *handler) Meta() xproto.Window {
-//	return h.meta
-//}
-
-//func (h *handler) Motion() xproto.Window {
-//	return h.motion
-//}
-
-func (h *handler) Empty() bool {
-	h.EvtsLck.Lock()
-	defer h.EvtsLck.Unlock()
-
-	return len(h.Events) == 0
-}
-
-func (h *handler) End() {
-	h.end = true
-}
-
-func (h *handler) Ending() bool {
-	return h.end
-}
-
-type evnt struct {
-	evt xgb.Event
-	err xgb.Error
-}
-
-func (h *handler) Enqueue(evt xgb.Event, err xgb.Error) {
-	h.EvtsLck.Lock()
-	defer h.EvtsLck.Unlock()
-
-	h.Events = append(h.Events, evnt{
-		evt: evt,
-		err: err,
-	})
-}
-
-func (h *handler) Dequeue() (xgb.Event, xgb.Error) {
-	h.EvtsLck.Lock()
-	defer h.EvtsLck.Unlock()
-
-	e := h.Events[0]
-	h.Events = h.Events[1:]
-	return e.evt, e.err
-}
-
-func (h *handler) Handle(pre, post, quit chan struct{}) {
-	for {
-		if h.Ending() {
-			if quit != nil {
-				quit <- struct{}{}
-			}
-			break
-		}
-
-		h.read()
-
-		h.process(pre, post)
-	}
-}
-
-func (h *handler) read() {
-	ev, err := h.Conn().WaitForEvent()
-	if ev == nil && err == nil {
-		h.Fatal("euclid/handler BUG: Could not read an event or an error.")
-	}
-	h.Enqueue(ev, err)
-}
-
-func (h *handler) process(pre, post chan struct{}) {
-	for !h.Empty() {
-		if h.Ending() {
-			return
-		}
-
-		pre <- struct{}{}
-
-		ev, err := h.Dequeue()
-
-		if err != nil {
-			h.Println(err.Error())
-			post <- struct{}{}
-			continue
-		}
-
-		if ev == nil {
-			h.Fatal("euclid/handler BUG: Expected an event but got nil.")
-		}
-
-		switch evt := ev.(type) {
-		case xproto.MapRequestEvent,
-			xproto.DestroyNotifyEvent,
-			xproto.UnmapNotifyEvent,
-			xproto.ClientMessageEvent,
-			xproto.ConfigureRequestEvent,
-			xproto.PropertyNotifyEvent,
-			xproto.EnterNotifyEvent,
-			xproto.MotionNotifyEvent,
-			xproto.FocusInEvent,
-			randr.ScreenChangeNotifyEvent:
-			h.Call(evt)
-		default:
-			h.Println("handler received event: %+v", evt)
-		}
-
-		post <- struct{}{}
-	}
-}
-
-func (h *handler) Call(evt xgb.Event) {
-	h.callLck.Lock()
-	defer h.callLck.Unlock()
-	spew.Dump(evt)
-	spew.Dump(h.call)
-}
+//var (
+//	RootEventMask   uint32 = (xproto.EventMaskSubstructureNotify | xproto.EventMaskSubstructureRedirect)
+//	ClientEventMask uint32 = (xproto.EventMaskPropertyChange | xproto.EventMaskFocusChange)
+//)
 
 //func (h *handler) SetInputFocus(c *Client) {
 //	if c == nil {

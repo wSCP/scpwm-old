@@ -4,7 +4,6 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/thrisp/scpwm/euclid/settings"
 )
 
@@ -19,8 +18,8 @@ type Command interface {
 	Primary() string
 	Selector() string
 	Opts() [][]string
-	Raw() []byte
-	Process(Data) (Response, error)
+	Raw() string
+	Process(Data) (Response, string, error)
 }
 
 type command struct {
@@ -33,8 +32,7 @@ type command struct {
 func NewCommand(cmd []byte) Command {
 	raw := cmd
 	in := string(cmd)
-	spl := strings.Split(in, " ")
-	pri, sel, opts := parseCmd(spl)
+	pri, sel, opts := parseCmd(in)
 	return command{
 		pri: pri,
 		sel: sel,
@@ -43,34 +41,26 @@ func NewCommand(cmd []byte) Command {
 	}
 }
 
-//var subcmdTranslate map[string]string = map[string]string{
-//	"-m":        "monitor",
-//	"--monitor": "monitor",
-//	"-d":        "desktop",
-//	"--desktop": "desktop",
-//	"-w":        "window",
-//	"--window":  "window",
-//}
-
-func splitOpts(r rune) bool {
+func splitByHyphen(r rune) bool {
 	if r == '-' {
 		return true
 	}
 	return false
 }
 
-func parseCmd(s []string) (string, string, [][]string) {
-	//var subcmd []string
-	pri := s[0]
-	s = s[:0+copy(s[0:], s[0+1:])]
-	fds := strings.FieldsFunc(strings.Join(s, " "), splitOpts)
-	spew.Dump(fds)
-	//if sc, ok := subcmdTranslate[s[1]]; ok {
-	//	subcmd = append(subcmd, sc, s[2])
-	//	s = s[:1+copy(s[1:], s[2+1:])]
-	//}
-	//return pri, subcmd, s[1:]
-	return pri, "", nil
+func parseCmd(s string) (string, string, [][]string) {
+	fds := strings.FieldsFunc(s, splitByHyphen)
+	front := fds[0]
+	options := fds[:0+copy(fds[0:], fds[0+1:])]
+	pri := strings.Split(front, " ")
+	primary := pri[0]
+	sel := pri[:0+copy(pri[0:], pri[0+1:])]
+	selector := strings.Join(sel, " ")
+	var opts [][]string
+	for _, v := range options {
+		opts = append(opts, strings.Split(v, " "))
+	}
+	return primary, selector, opts
 }
 
 func (c command) Primary() string {
@@ -85,11 +75,11 @@ func (c command) Opts() [][]string {
 	return c.opt
 }
 
-func (c command) Raw() []byte {
-	return c.raw
+func (c command) Raw() string {
+	return string(c.raw)
 }
 
-func (c command) Process(d Data) (Response, error) {
+func (c command) Process(d Data) (Response, string, error) {
 	switch c.pri {
 	case "config":
 		return c.config(d)
@@ -97,8 +87,8 @@ func (c command) Process(d Data) (Response, error) {
 		return c.monitor(d)
 	case "desktop":
 		return c.desktop(d)
-	case "client":
-		return c.client(d)
+	case "window":
+		return c.window(d)
 	case "query":
 		return c.query(d)
 	case "rule":
@@ -112,48 +102,65 @@ func (c command) Process(d Data) (Response, error) {
 	case "quit":
 		return c.quit(d)
 	}
-	return mUNKNOWN, UnknownError(c.pri, string(c.raw))
+	return mUNKNOWN, "", UnknownError(c.pri, string(c.raw))
 }
 
-func (c command) config(d Data) (Response, error) {
-	return mUNKNOWN, nil
+func (c command) config(d Data) (Response, string, error) {
+	return mUNKNOWN, "", nil
 }
 
-func (c command) monitor(d Data) (Response, error) {
-	return mUNKNOWN, nil
+func (c command) monitor(d Data) (Response, string, error) {
+	return mUNKNOWN, "", nil
 }
 
-func (c command) desktop(d Data) (Response, error) {
-	return mUNKNOWN, nil
+func (c command) desktop(d Data) (Response, string, error) {
+	return mUNKNOWN, "", nil
 }
 
-func (c command) client(d Data) (Response, error) {
-	return mUNKNOWN, nil
+func (c command) window(d Data) (Response, string, error) {
+	return mUNKNOWN, "", nil
 }
 
-func (c command) query(d Data) (Response, error) {
-	return mUNKNOWN, nil
+func (c command) query(d Data) (Response, string, error) {
+	return mUNKNOWN, "", nil
 }
 
-func (c command) rule(d Data) (Response, error) {
-	return mUNKNOWN, nil
+func (c command) rule(d Data) (Response, string, error) {
+	return mUNKNOWN, "", nil
 }
 
-func (c command) pointer(d Data) (Response, error) {
-	return mUNKNOWN, nil
+func (c command) pointer(d Data) (Response, string, error) {
+	return mUNKNOWN, "", nil
 }
 
-func (c command) restore(d Data) (Response, error) {
-	return mUNKNOWN, nil
+func (c command) restore(d Data) (Response, string, error) {
+	return mUNKNOWN, "", nil
 }
 
-func (c command) control(d Data) (Response, error) {
-	return mUNKNOWN, nil
+func (c command) control(d Data) (Response, string, error) {
+	return mUNKNOWN, "", nil
 }
 
-func (c command) quit(d Data) (Response, error) {
-	return mFAILURE, nil
+func (c command) quit(d Data) (Response, string, error) {
+	return mUNKNOWN, "", nil
 }
+
+func (c command) setSetting(s settings.Settings) (Response, string, error) {
+	return mUNKNOWN, "", errors.New("SET SETTING UNKNOWN")
+}
+
+func (c command) getSetting(s settings.Settings) (Response, string, error) {
+	return mUNKNOWN, "", errors.New("GET SETTING UNKNOWN")
+}
+
+//var subcmdTranslate map[string]string = map[string]string{
+//	"-m":        "monitor",
+//	"--monitor": "monitor",
+//	"-d":        "desktop",
+//	"--desktop": "desktop",
+//	"-w":        "window",
+//	"--window":  "window",
+//}
 
 //func (c Command) cmdString() string {
 //return strings.Join(c.cmd, " ")
@@ -173,11 +180,3 @@ func (c command) quit(d Data) (Response, error) {
 //func (c Command) length() int {
 //	return len(c.cmd)
 //}
-
-func (c command) setSetting(s settings.Settings) (Response, error) {
-	return mUNKNOWN, errors.New("SET SETTING UNKNOWN")
-}
-
-func (c command) getSetting(s settings.Settings) (Response, error) {
-	return mUNKNOWN, errors.New("GET SETTING UNKNOWN")
-}

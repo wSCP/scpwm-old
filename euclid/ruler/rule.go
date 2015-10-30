@@ -5,124 +5,123 @@ import (
 	"strconv"
 )
 
-type ruleCause int
+type RuleCause int
 
 const (
-	className ruleCause = iota
-	instanceName
-	clientDescription
-	windowDescription
+	ClassName RuleCause = iota
+	InstanceName
+	AnyAll
 )
 
-var stringRuleCause map[string]ruleCause = map[string]ruleCause{
-	"class":    className,
-	"instance": instanceName,
-	"client":   clientDescription,
-	"window":   windowDescription,
+var stringRuleCause map[string]RuleCause = map[string]RuleCause{
+	"class":    ClassName,
+	"instance": InstanceName,
+	"any":      AnyAll,
+	"all":      AnyAll,
 }
 
-func (r ruleCause) String() string {
+func (r RuleCause) String() string {
 	switch r {
-	case className:
+	case ClassName:
 		return "class"
-	case instanceName:
+	case InstanceName:
 		return "instance"
-	case clientDescription:
-		return "client"
-	case windowDescription:
-		return "window"
+	case AnyAll:
+		return "any, all"
 	}
 	return ""
 }
 
-type ruleEffect int
+type RuleEffect int
 
 const (
-	setSplitDirection ruleEffect = iota
-	setSplitRatio
-	minWidth
-	maxWidth
-	minHeight
-	maxHeight
-	isPseudoTiled
-	isFloating
-	isLocked
-	isSticky
-	isPrivate
-	isBordered
-	isCentered
-	isFollowed
-	isManaged
-	isFocused
-	monitorDescription
-	desktopDescription
+	SetSplitDirection RuleEffect = iota
+	SetSplitRatio
+	MinWidth
+	MaxWidth
+	MinHeight
+	MaxHeight
+	IsPseudoTiled
+	IsFloating
+	IsLocked
+	IsSticky
+	IsPrivate
+	IsBordered
+	IsCentered
+	//IsFollowed
+	IsManaged
+	IsFocused
+	ClientDescription
+	MonitorDescription
+	DesktopDescription
 )
 
-var stringRuleEffect map[string]ruleEffect = map[string]ruleEffect{
-	"direction":   setSplitDirection,  //string
-	"ratio":       setSplitRatio,      //float64
-	"minwidth":    minWidth,           //uint16
-	"maxwidth":    maxWidth,           //uint16
-	"minheight":   minHeight,          //uint16
-	"maxheight":   maxHeight,          //uint16
-	"pseudotiled": isPseudoTiled,      //bool
-	"floating":    isFloating,         //bool
-	"lock":        isLocked,           //bool
-	"sticky":      isSticky,           //bool
-	"private":     isPrivate,          //bool
-	"bordered":    isBordered,         //bool
-	"centered":    isCentered,         //bool
-	"follow":      isFollowed,         //bool
-	"manage":      isManaged,          //bool
-	"focus":       isFocused,          //bool
-	"monitor":     monitorDescription, //string
-	"desktop":     desktopDescription, //string
+var stringRuleEffect map[string]RuleEffect = map[string]RuleEffect{
+	"direction":   SetSplitDirection, //string
+	"ratio":       SetSplitRatio,     //float64
+	"minwidth":    MinWidth,          //uint16
+	"maxwidth":    MaxWidth,          //uint16
+	"minheight":   MinHeight,         //uint16
+	"maxheight":   MaxHeight,         //uint16
+	"pseudotiled": IsPseudoTiled,     //bool
+	"floating":    IsFloating,        //bool
+	"lock":        IsLocked,          //bool
+	"sticky":      IsSticky,          //bool
+	"private":     IsPrivate,         //bool
+	"bordered":    IsBordered,        //bool
+	"centered":    IsCentered,        //bool
+	//"follow":      IsFollowed,         //bool
+	"manage":  IsManaged,          //bool
+	"focus":   IsFocused,          //bool
+	"client":  ClientDescription,  //string
+	"monitor": MonitorDescription, //string
+	"desktop": DesktopDescription, //string
 }
 
-func (r ruleEffect) String() string {
+func (r RuleEffect) String() string {
 	switch r {
-	case setSplitDirection:
+	case SetSplitDirection:
 		return "split direction"
-	case setSplitRatio:
+	case SetSplitRatio:
 		return "split ratio"
-	case minWidth:
+	case MinWidth:
 		return "minimum width"
-	case maxWidth:
+	case MaxWidth:
 		return "maximum width"
-	case minHeight:
+	case MinHeight:
 		return "minimum height"
-	case maxHeight:
+	case MaxHeight:
 		return "maximum height"
-	case isPseudoTiled:
+	case IsPseudoTiled:
 		return "pseudo tiled"
-	case isFloating:
+	case IsFloating:
 		return "floating"
-	case isLocked:
+	case IsLocked:
 		return "locked"
-	case isSticky:
+	case IsSticky:
 		return "sticky"
-	case isPrivate:
+	case IsPrivate:
 		return "private"
-	case isBordered:
+	case IsBordered:
 		return "bordered"
-	case isCentered:
+	case IsCentered:
 		return "centered"
-	case isManaged:
+	case IsManaged:
 		return "managed"
-	case isFocused:
+	case IsFocused:
 		return "focused"
-	case monitorDescription:
+	case MonitorDescription:
 		return "monitor"
-	case desktopDescription:
+	case DesktopDescription:
 		return "desktop"
 	}
 	return ""
 }
 
 type Rule interface {
-	Cause() ruleCause
+	Cause() RuleCause
 	Key() string
-	Effect() ruleEffect
+	Effect() RuleEffect
 	Value() string
 	Reuse() bool
 	String() string
@@ -136,9 +135,9 @@ type Implementr interface {
 }
 
 type rule struct {
-	cause  ruleCause
+	cause  RuleCause
 	key    string
-	effect ruleEffect
+	effect RuleEffect
 	value  string
 	reuse  bool
 }
@@ -158,7 +157,7 @@ func newRule(cause, key, effect, value string, reuse bool) Rule {
 	return nil
 }
 
-func (r *rule) Cause() ruleCause {
+func (r *rule) Cause() RuleCause {
 	return r.cause
 }
 
@@ -166,7 +165,7 @@ func (r *rule) Key() string {
 	return r.key
 }
 
-func (r *rule) Effect() ruleEffect {
+func (r *rule) Effect() RuleEffect {
 	return r.effect
 }
 

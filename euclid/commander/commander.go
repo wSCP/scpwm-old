@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"net"
 
+	"github.com/thrisp/scpwm/euclid/branch"
 	"github.com/thrisp/scpwm/euclid/clients"
 	"github.com/thrisp/scpwm/euclid/desktops"
 	"github.com/thrisp/scpwm/euclid/handler"
@@ -23,6 +24,7 @@ type Data interface {
 	settings.Settings
 	handler.Handler
 	ruler.Ruler
+	Tree() *branch.Branch
 	Monitors() []monitors.Monitor
 	Desktops() []desktops.Desktop
 	Clients() []clients.Client
@@ -64,7 +66,10 @@ var (
 
 func (c *commander) Process(msg []byte, d Data) Response {
 	cmd := NewCommand(msg)
-	resp, err := cmd.Process(d)
+	resp, result, err := cmd.Process(d)
+	if result != "" {
+		c.comm <- result
+	}
 	if err != nil {
 		c.comm <- err.Error()
 	}
