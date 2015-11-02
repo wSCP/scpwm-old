@@ -27,7 +27,6 @@ type Manager struct {
 	ruler.Ruler
 	commander.Commander
 	*branch.Branch
-	//history  *History
 }
 
 func New() *Manager {
@@ -50,6 +49,8 @@ func New() *Manager {
 	m.Branch = monitors.New(m.Handler, m.Settings)
 
 	m.Loops = l
+
+	//history  *History
 
 	return m
 }
@@ -97,7 +98,10 @@ func (m *Manager) Looping(l *net.UnixListener) *Loops {
 
 func (m *Manager) SignalHandler(sig os.Signal) {
 	switch sig {
-	case syscall.SIGINT, syscall.SIGHUP, syscall.SIGTERM:
+	case syscall.SIGHUP:
+		m.Println(sig)
+		// reread config / restart
+	case syscall.SIGINT, syscall.SIGTERM:
 		m.Println(sig)
 		os.Exit(0)
 	case syscall.SIGCHLD, syscall.SIGPIPE:

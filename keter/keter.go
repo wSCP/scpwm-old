@@ -7,6 +7,8 @@ import (
 	"log"
 	"os"
 	"syscall"
+
+	"github.com/thrisp/scpwm/version"
 )
 
 var (
@@ -16,6 +18,12 @@ var (
 	ChainExpiry     int
 	ConfigPath      string
 	verbose         bool
+	pkgVersion      version.Version
+	packageName     string = "SCPWM keter"
+	versionTag      string = "No version tag supplied with compilation"
+	versionHash     string
+	versionDate     string
+	callVersion     bool
 )
 
 func defaultConfigPath() string {
@@ -46,8 +54,7 @@ func SignalHandler(h Handlr, s os.Signal) {
 			msg.WriteString(fmt.Sprintf("error while configuring: %s\n", err))
 		}
 	default:
-		Logger.Println(fmt.Sprintf("received %v", s))
-
+		Logger.Println(fmt.Sprintf("received signal %v", s))
 	}
 	if verbose && msg.Len() != 0 {
 		Logger.Println(msg.String())
@@ -55,6 +62,10 @@ func SignalHandler(h Handlr, s os.Signal) {
 }
 
 func main() {
+	if callVersion {
+		fmt.Printf(pkgVersion.Fmt())
+		os.Exit(0)
+	}
 	chains, err := LoadConfig(ConfigPath)
 	if err != nil {
 		Logger.Fatalf("configuration loading error: %s", err.Error())
@@ -89,5 +100,7 @@ func init() {
 	flag.IntVar(&ChainExpiry, "timeout", 2, "Timeout in seconds for the recording of chord chains.")
 	flag.StringVar(&ConfigPath, "config", defaultConfigPath(), "Read the main configuration from the given file.")
 	flag.BoolVar(&verbose, "verbose", verbose, "Verbose logging messages, default is false.")
+	flag.BoolVar(&callVersion, "version", callVersion, "Print the package version.")
 	flag.Parse()
+	pkgVersion = version.New(packageName, versionTag, versionHash, versionDate)
 }

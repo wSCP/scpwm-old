@@ -17,7 +17,7 @@ type Handler interface {
 	Eventr
 	Callr
 	atomic.Atomic
-	ewmh.Ewmh
+	ewmh.EWMH
 }
 
 type Connectr interface {
@@ -62,7 +62,7 @@ type handler struct {
 	callLck *sync.RWMutex
 	end     bool
 	atomic.Atomic
-	ewmh.Ewmh
+	ewmh.EWMH
 }
 
 func New(display string, ewhm []string, logr *log.Logger) (Handler, error) {
@@ -97,7 +97,7 @@ func New(display string, ewhm []string, logr *log.Logger) (Handler, error) {
 	//	return nil, err
 	//}
 	//h.Ewmh.Set("string name", h.root, h.meta)
-	h.Ewmh = e
+	h.EWMH = e
 
 	return h, nil
 }

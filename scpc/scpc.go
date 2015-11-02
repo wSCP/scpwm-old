@@ -9,6 +9,8 @@ import (
 	"net"
 	"os"
 	"time"
+
+	"github.com/thrisp/scpwm/version"
 )
 
 var (
@@ -17,8 +19,13 @@ var (
 	socketPath      string
 	responseTimeout time.Duration = 2
 	verbose         bool
-
-	logger = log.New(os.Stderr, "[SCPC] ", log.Ldate|log.Lmicroseconds)
+	logger          = log.New(os.Stderr, "[SCPC] ", log.Ldate|log.Lmicroseconds)
+	pkgVersion      version.Version
+	packageName     string = "SCPWM scpc"
+	versionTag      string = "No version tag supplied with compilation"
+	versionHash     string
+	versionDate     string
+	callVersion     bool
 )
 
 func defaulSocketPath() string {
@@ -147,6 +154,10 @@ func exit(c *net.UnixConn, code int) {
 }
 
 func main() {
+	if callVersion {
+		fmt.Printf(pkgVersion.Fmt())
+		os.Exit(0)
+	}
 	t := "unix"
 	laddr := net.UnixAddr{"/tmp/scpc", t}
 	conn, err := net.DialUnix(t, &laddr, &net.UnixAddr{socketPath, t})
@@ -178,5 +189,7 @@ func init() {
 	flag.StringVar(&socketPath, "path", defaulSocketPath(), "Read the socket from the given path.")
 	flag.DurationVar(&responseTimeout, "timeout", responseTimeout, "Wait only specified seconds euclid's response, default is 2")
 	flag.BoolVar(&verbose, "verbose", verbose, "Verbose logging messages, default is false.")
+	flag.BoolVar(&callVersion, "version", callVersion, "Print the package version.")
 	flag.Parse()
+	pkgVersion = version.New(packageName, versionTag, versionHash, versionDate)
 }

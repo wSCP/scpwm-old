@@ -33,7 +33,7 @@ type ewmh struct {
 	atom atomic.Atomic
 }
 
-func newEWMH(c *xgb.Conn, r xproto.Window, a atomic.Atomic) EWMH {
+func New(c *xgb.Conn, r xproto.Window, a atomic.Atomic) EWMH {
 	return &ewmh{
 		conn: c,
 		root: r,

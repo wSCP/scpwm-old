@@ -1,5 +1,6 @@
 package ewmh
 
+/*
 import (
 	"github.com/BurntSushi/xgb"
 	"github.com/BurntSushi/xgb/xproto"
@@ -11,20 +12,22 @@ import (
 //"github.com/thrisp/scpwm/euclid/branch"
 
 type Ewmh interface {
+	EWMH
 	DesktopsState
 	WmState
 }
 
 type ewmhHandler struct {
+	EWMH
 	DesktopsState
 	WmState
 }
 
 func New(c *xgb.Conn, r xproto.Window, a atomic.Atomic) Ewmh {
-	e := newEWMH(c, r, a)
 	return &ewmhHandler{
-		DesktopsState: newDesktopsState(e),
-		WmState:       newWmState(e),
+		EWMH:          newEWMH(c, r, a),
+		DesktopsState: newDesktopsState(),
+		WmState:       newWmState(),
 	}
 }
 
@@ -36,14 +39,10 @@ type DesktopsState interface {
 	//UpdateWMDesktops()
 }
 
-type desktopsState struct {
-	e EWMH
-}
+type desktopsState struct{}
 
-func newDesktopsState(e EWMH) *desktopsState {
-	return &desktopsState{
-		e: e,
-	}
+func newDesktopsState() *desktopsState {
+	return &desktopsState{}
 }
 
 //void ewmh_update_number_of_desktops(void)
@@ -127,14 +126,10 @@ type WmState interface {
 	//RemoveClient(*Client, xproto.Atom) bool
 }
 
-type wmState struct {
-	e EWMH
-}
+type wmState struct{}
 
-func newWmState(e EWMH) *wmState {
-	return &wmState{
-		e: e,
-	}
+func newWmState() *wmState {
+	return &wmState{}
 }
 
 //void ewmh_set_supporting(xcb_window_t win)
@@ -200,3 +195,4 @@ func newWmState(e EWMH) *wmState {
 //	}
 //return false
 //}
+*/
