@@ -9,7 +9,7 @@ import (
 	"github.com/thrisp/scpwm/euclid/desktops"
 	"github.com/thrisp/scpwm/euclid/handler"
 	"github.com/thrisp/scpwm/euclid/monitors"
-	"github.com/thrisp/scpwm/euclid/ruler"
+	"github.com/thrisp/scpwm/euclid/rules"
 	"github.com/thrisp/scpwm/euclid/settings"
 )
 
@@ -23,7 +23,7 @@ type Response []byte
 type Data interface {
 	settings.Settings
 	handler.Handler
-	ruler.Ruler
+	rules.Ruler
 	Tree() *branch.Branch
 	Monitors() []monitors.Monitor
 	Desktops() []desktops.Desktop

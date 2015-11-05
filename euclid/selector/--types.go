@@ -1,6 +1,4 @@
-package query
-
-import "strings"
+package selector
 
 type Direction int
 
@@ -176,48 +174,4 @@ var stringAge map[string]Age = map[string]Age{
 	"younger":  Younger,
 	"older":    Older,
 	"oldest":   Oldest,
-}
-
-func DetermineNode(from string) Node {
-	switch strings.ToLower(from) {
-	case "", "none":
-		return nodeNone
-	case "monitor", "screen":
-		return nodeMonitor
-	case "desktop", "workspace":
-		return nodeDesktop
-	case "window", "client":
-		return nodeClient
-	}
-	return nodeNone
-}
-
-type Node int
-
-const (
-	nodeNone Node = iota
-	nodeMonitor
-	nodeDesktop
-	nodeClient
-)
-
-var stringNode map[string]Node = map[string]Node{
-	"none":    nodeNone,
-	"monitor": nodeMonitor,
-	"desktop": nodeDesktop,
-	"client":  nodeClient,
-}
-
-func (n Node) String() string {
-	switch n {
-	case nodeNone:
-		return "none"
-	case nodeMonitor:
-		return "monitor"
-	case nodeDesktop:
-		return "desktop"
-	case nodeClient:
-		return "client"
-	}
-	return ""
 }

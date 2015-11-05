@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -15,7 +16,7 @@ import (
 	"github.com/thrisp/scpwm/euclid/desktops"
 	"github.com/thrisp/scpwm/euclid/handler"
 	"github.com/thrisp/scpwm/euclid/monitors"
-	"github.com/thrisp/scpwm/euclid/ruler"
+	"github.com/thrisp/scpwm/euclid/rules"
 	"github.com/thrisp/scpwm/euclid/settings"
 )
 
@@ -24,7 +25,7 @@ type Manager struct {
 	handler.Handler
 	settings.Settings
 	*Loops
-	ruler.Ruler
+	rules.Ruler
 	commander.Commander
 	*branch.Branch
 }
@@ -34,7 +35,7 @@ func New() *Manager {
 
 	m := &Manager{
 		Settings:  settings.DefaultSettings(),
-		Ruler:     ruler.New(),
+		Ruler:     rules.New(),
 		Commander: commander.New(l.Comm),
 		Logger:    log.New(os.Stderr, "[SCPWM] ", log.Ldate|log.Lmicroseconds),
 	}
@@ -99,24 +100,19 @@ func (m *Manager) Looping(l *net.UnixListener) *Loops {
 func (m *Manager) SignalHandler(sig os.Signal) {
 	switch sig {
 	case syscall.SIGHUP:
-		m.Println(sig)
-		// reread config / restart
+		m.Comm <- fmt.Sprintf("received signal SIGHUP, reconfiguring...")
+		cp := m.String("ConfigPath")
+		err := m.LoadConfig(cp)
+		//propagate down, apply across monitors, desktops
+		if err != nil {
+			m.Println(err.Error())
+		}
 	case syscall.SIGINT, syscall.SIGTERM:
 		m.Println(sig)
 		os.Exit(0)
 	case syscall.SIGCHLD, syscall.SIGPIPE:
 		m.Println(sig)
 	}
-}
-
-func (m *Manager) Current() (monitors.Monitor, desktops.Desktop, clients.Client) {
-	var mon monitors.Monitor
-	var dsk desktops.Desktop
-	var clt clients.Client
-	mon = monitors.Focused(m.Branch)
-	dsk = desktops.Focused(mon.Desktops())
-	clt = clients.Focused(dsk.Clients())
-	return mon, dsk, clt
 }
 
 func (m *Manager) Tree() *branch.Branch {
@@ -167,20 +163,6 @@ func (m *Manager) MapRequest(evt xgb.Event) error {
 	return EventError(evt, "MapRequest")
 }
 
-func (m *Manager) exists(win xproto.Window) bool {
-	_, exists := m.locate(win)
-	return exists
-}
-
-func (m *Manager) locate(win xproto.Window) (clients.Client, bool) {
-	for _, c := range m.Clients() {
-		if c.XWindow() == win {
-			return c, true
-		}
-	}
-	return nil, false
-}
-
 func (m *Manager) schedule(win xproto.Window) {
 	var overrideRedirect bool
 	wa, _ := xproto.GetWindowAttributes(m.Conn(), win).Reply()
@@ -189,33 +171,36 @@ func (m *Manager) schedule(win xproto.Window) {
 	}
 
 	if !overrideRedirect && !m.exists(win) {
-		rules := m.Ruler.Applicable(win)
-		m.manage(win, rules)
+		if class, instance, err := m.WmClassGet(win); err == nil {
+			rules := m.Ruler.Applicable(class, instance)
+			m.manage(win, rules)
+		}
 	}
 }
 
-func (m *Manager) manage(win xproto.Window, rules []ruler.Rule) {
-	//mon, desk, f := m.Current()
-	//for _, r := range rules {
-	//switch r.Effect() {
-	//case ruler.IsManaged:
-	//case ruler.ClientDescription:
-	//mon, desk, f = locate that client as f
-	//case ruler.DesktopDescription:
-	//mon, desk, f = locate desktop as desk
-	//case ruler.MonitorDescription:
-	//mon, desk, f = locate monitor as mon
-	//case ruler.IsSticky:
-	//case ruler.SetSplitDirection:
-	//if f != nil {
-	//		//f.splitM = manual
-	//		//f.splitd = r.String() to split direction
-	//}
-	//case ruler.SetSplitRatio:
-	//if f != nil {
-	//		//f.splitR = rule.splitRatio
-	//}
-	//}
+func (m *Manager) manage(win xproto.Window, rls []rules.Rule) {
+	//loc := m.Current()
+	//for _, r := range rls {
+	//	ef := r.Effect()
+	//	switch ef.Applies() {
+	//	case rules.IsManaged:
+	//	case rules.ClientSelector:
+	//loc, _ = m.Locate(loc, Selectors(ef.String())...)
+	//	case rules.DesktopSelector:
+	//loc, _ = m.Locate(loc, Selectors(ef.String())...)
+	//	case rules.MonitorSelector:
+	//		//loc = m.Locate(loc, Selectors(ef.String())...)
+	//	case rules.IsSticky:
+	//	case rules.SetSplitDirection:
+	//	//if f != nil {
+	//	//		//f.splitM = manual
+	//	//		//f.splitd = r.String() to split direction
+	//	//}
+	//	case rules.SetSplitRatio:
+	//		//if f != nil {
+	//		//		//f.splitR = rule.splitRatio
+	//		//}
+	//	}
 	//}
 
 	//client := clients.NewClient(class, instance string, c *xgb.Conn, x xproto.Window, r xproto.Window)
@@ -239,7 +224,7 @@ func (m *Manager) manage(win xproto.Window, rules []ruler.Rule) {
 
 func (m *Manager) ConfigureRequest(evt xgb.Event) error {
 	if cr, ok := evt.(xproto.ConfigureRequestEvent); ok {
-		client, exists := m.locate(cr.Window)
+		client, exists := m.locateClient(cr.Window)
 		//var w, h uint16
 		if exists && client.Tiled() {
 			//if (cr.ValueMask & xproto.ConfigWindowX) != 0 {

@@ -85,7 +85,7 @@ func (c *chain) expired() bool {
 }
 
 func (c *chain) touch() {
-	c.expires = time.Now().Add(time.Duration(ChainExpiry) * time.Second).Unix()
+	c.expires = time.Now().Add(time.Duration(provided.ChainExpiry) * time.Second).Unix()
 }
 
 func clear(c Chain) {

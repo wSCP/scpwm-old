@@ -2,37 +2,51 @@ package main
 
 import (
 	"bytes"
-	"flag"
 	"fmt"
 	"log"
 	"os"
 	"syscall"
+	"time"
 
+	"github.com/thrisp/scpwm/flarg"
 	"github.com/thrisp/scpwm/version"
 )
 
 var (
-	Logger          = log.New(os.Stderr, "KETER: ", log.Ldate|log.Lmicroseconds)
-	CONFIG_HOME_ENV = "XDG_CONFIG_HOME"
-	CONFIG_PATH     = "keter/keterrc"
-	ChainExpiry     int
-	ConfigPath      string
-	verbose         bool
-	pkgVersion      version.Version
-	packageName     string = "SCPWM keter"
-	versionTag      string = "No version tag supplied with compilation"
-	versionHash     string
-	versionDate     string
-	callVersion     bool
+	provided    *args
+	Logger      = log.New(os.Stderr, "KETER: ", log.Ldate|log.Lmicroseconds)
+	pkgVersion  version.Version
+	packageName string = "SCPWM keter"
+	versionTag  string = "No version tag supplied with compilation"
+	versionHash string
+	versionDate string
 )
 
-func defaultConfigPath() string {
+type args struct {
+	ConfigEnv   string        `arg:"--configEnv,help:Provide an env variable to locate the home directory of the configuration file. Default is 'XDG_CONFIG_HOME.'"`
+	ConfigPath  string        `arg:"--configPath,help:Provide the path of the config file in the config home directory. Default is 'keter/keterrc'"`
+	ChainExpiry time.Duration `arg:"-t,--timeout,help:Timeout in seconds for the recording of chord chains. Default is 2."`
+	Verbose     bool          `arg:"--verbose,help:Verbose logging messages."`
+	Version     bool          `arg:"-v,--version,help:Print the compiled program version and exit."`
+}
+
+func defaultArgs() *args {
+	return &args{
+		"XDG_CONFIG_HOME",
+		"keter/keterrc",
+		2 * time.Second,
+		false,
+		false,
+	}
+}
+
+func (a *args) configPath() string {
 	var pth string
-	configHome := os.Getenv(CONFIG_HOME_ENV)
+	configHome := os.Getenv(a.ConfigEnv)
 	if configHome != "" {
-		pth = fmt.Sprintf("%s/%s", configHome, CONFIG_PATH)
+		pth = fmt.Sprintf("%s/%s", configHome, a.ConfigPath)
 	} else {
-		pth = fmt.Sprintf("%s/%s/%s", os.Getenv("HOME"), ".config", CONFIG_PATH)
+		pth = fmt.Sprintf("%s/%s/%s", os.Getenv("HOME"), ".config", a.ConfigPath)
 	}
 	return pth
 }
@@ -45,7 +59,7 @@ func SignalHandler(h Handlr, s os.Signal) {
 		os.Exit(0)
 	case syscall.SIGHUP:
 		msg.WriteString("Got signal SIGHUP, reconfiguring....\n")
-		chains, err := LoadConfig(ConfigPath)
+		chains, err := LoadConfig(provided.configPath())
 		if err != nil {
 			msg.WriteString(fmt.Sprintf("error while loading config: %s\n", err.Error()))
 		}
@@ -56,17 +70,23 @@ func SignalHandler(h Handlr, s os.Signal) {
 	default:
 		Logger.Println(fmt.Sprintf("received signal %v", s))
 	}
-	if verbose && msg.Len() != 0 {
+	if provided.Verbose && msg.Len() != 0 {
 		Logger.Println(msg.String())
 	}
 }
 
+func init() {
+	provided = defaultArgs()
+	flarg.MustParse(provided)
+	pkgVersion = version.New(packageName, versionTag, versionHash, versionDate)
+}
+
 func main() {
-	if callVersion {
+	if provided.Version {
 		fmt.Printf(pkgVersion.Fmt())
 		os.Exit(0)
 	}
-	chains, err := LoadConfig(ConfigPath)
+	chains, err := LoadConfig(provided.configPath())
 	if err != nil {
 		Logger.Fatalf("configuration loading error: %s", err.Error())
 	}
@@ -94,13 +114,4 @@ EVENTLOOP:
 			break EVENTLOOP
 		}
 	}
-}
-
-func init() {
-	flag.IntVar(&ChainExpiry, "timeout", 2, "Timeout in seconds for the recording of chord chains.")
-	flag.StringVar(&ConfigPath, "config", defaultConfigPath(), "Read the main configuration from the given file.")
-	flag.BoolVar(&verbose, "verbose", verbose, "Verbose logging messages, default is false.")
-	flag.BoolVar(&callVersion, "version", callVersion, "Print the package version.")
-	flag.Parse()
-	pkgVersion = version.New(packageName, versionTag, versionHash, versionDate)
 }

@@ -1,16 +1,14 @@
-package ruler
+package rules
 
 import (
 	"fmt"
 	"strconv"
-
-	"github.com/BurntSushi/xgb/xproto"
 )
 
 type Ruler interface {
 	Rule(...string) bool
 	Unrule(...string) bool
-	Applicable(xproto.Window) []Rule
+	Applicable(...string) []Rule
 	Pending() []Rule
 }
 
@@ -68,22 +66,28 @@ func (r *ruler) remove(d string) bool {
 	return false
 }
 
-func (r *ruler) Applicable(w xproto.Window) []Rule {
+func contains(tags []string, having ...string) bool {
+	for _, t := range tags {
+		for _, h := range having {
+			if t == h {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (r *ruler) Applicable(tags ...string) []Rule {
+	var ret []Rule
+	for _, rule := range r.pending {
+		cause := rule.Cause().String()
+		if contains(tags, cause) {
+			ret = append(ret, rule)
+		}
+	}
 	return nil
 }
 
 func (r *ruler) Pending() []Rule {
 	return r.pending
 }
-
-//var defaultWindowRuleset = []Rule{
-//	newRule("window", "manage", "true", true),
-//	newRule("window", "focus", "true", true),
-//	newRule("window", "bordered", "true", true),
-//}
-
-//func (e *Euclid) applyRules(win *Window, csq *Consequence) {}
-
-//func (e *Euclid) scheduleRules(win *Window, csq *Consequence) bool {
-//	return false
-//}

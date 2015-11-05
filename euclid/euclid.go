@@ -1,83 +1,100 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"net"
 	"os"
 
 	"github.com/thrisp/scpwm/euclid/manager"
+	"github.com/thrisp/scpwm/flarg"
 	"github.com/thrisp/scpwm/version"
 )
 
 var (
-	socketEnv     string = "SCPWM_SOCKET"
-	socketPathTpl string = "/tmp/scpwm%s_%d_%d-socket"
-	socketPath    string
-	ConfigHomeEnv string = "XDG_CONFIG_HOME"
-	ConfigFile    string = "euclid/euclidrc"
-	ConfigPath    string
-	verbose       bool
-	pkgVersion    version.Version
-	packageName   string = "SCPWM euclid"
-	versionTag    string = "No version tag supplied with compilation"
-	versionHash   string
-	versionDate   string
-	callVersion   bool
+	provided    *args
+	pkgVersion  version.Version
+	packageName string = "SCPWM euclid"
+	versionTag  string = "No version tag supplied with compilation"
+	versionHash string
+	versionDate string
 )
 
-func defaultSocketPath() string {
-	var socketPath = os.Getenv(socketEnv)
+type args struct {
+	SocketEnv     string `arg:"--socketEnv,help:Provides an env variable to locate the SCPWM socket. Euclid will attempt to read from 'SCPWM_SOCKET' by default."`
+	socketPathTpl string `arg:"-"`
+	SocketPath    string `arg:"--socketPath,help:Specifies a socket path directly. Default is '/tmp/scpwm_0_0-socket'"`
+	ConfigHomeEnv string `arg:"--configEnv,help:Specifies an env variable for the config file home. The default is 'XDG_CONFIG_HOME'"`
+	ConfigFile    string `arg:"-c,--configFile,help:Reads the main configuration from the given file of the configuration home. The default is 'euclid/euclidrc'"`
+	Verbose       bool   `arg:"-v,--verbose,help:Allows for euclid to provided more and more detailed logging messages."`
+	Version       bool   `arg:"--version,help:Prints the compiled program version and exit."`
+}
+
+func defaultArgs() *args {
+	return &args{
+		"SCPWM_SOCKET",
+		"/tmp/scpwm%s_%d_%d-socket",
+		"",
+		"XDG_CONFIG_HOME",
+		"euclid/euclidrc",
+		false,
+		false,
+	}
+}
+
+func (a *args) socketPath() string {
+	if a.SocketPath != "" {
+		return a.SocketPath
+	}
+	var socketPath = os.Getenv(a.SocketEnv)
 	if socketPath == "" {
-		socketPath = fmt.Sprintf(socketPathTpl, "", 0, 0)
+		socketPath = fmt.Sprintf(a.socketPathTpl, "", 0, 0)
 	}
 	return socketPath
 }
 
-func defaultConfigPath() string {
+func (a *args) configPath() string {
 	var pth string
-	ch := os.Getenv(ConfigHomeEnv)
+	ch := os.Getenv(a.ConfigHomeEnv)
 	if ch != "" {
-		pth = fmt.Sprintf("%s/%s", ch, ConfigFile)
+		pth = fmt.Sprintf("%s/%s", ch, a.ConfigFile)
 	} else {
-		pth = fmt.Sprintf("%s/%s/%s", os.Getenv("HOME"), ".config", ConfigFile)
+		pth = fmt.Sprintf("%s/%s/%s", os.Getenv("HOME"), ".config", a.ConfigFile)
 	}
 	return pth
 }
 
 func init() {
-	flag.StringVar(&ConfigPath, "config", defaultConfigPath(), "Reads the main configuration from the given file. The default location is 'XDG_CONFIG_HOME/euclid/euclidrc'")
-	flag.StringVar(&socketEnv, "e", socketEnv, "Reads the socket from the given env variable, scpwm will attempt to read from 'SCPWM_SOCKET' by default")
-	flag.StringVar(&socketPath, "p", defaultSocketPath(), "Reads the socket from the given path. Default is '/tmp/scpwm_0_0-socket'")
-	flag.BoolVar(&verbose, "verbose", verbose, "Verbose logging messages, default is false.")
-	flag.BoolVar(&callVersion, "version", callVersion, "Print the package version.")
-	flag.Parse()
+	provided = defaultArgs()
+	flarg.MustParse(provided)
 	pkgVersion = version.New(packageName, versionTag, versionHash, versionDate)
 }
 
 func main() {
-	if callVersion {
+	if provided.Version {
 		fmt.Printf(pkgVersion.Fmt())
 		os.Exit(0)
 	}
 	e := manager.New()
-	sckt, err := net.ListenUnix("unix", &net.UnixAddr{socketPath, "unix"})
+	sp := provided.socketPath()
+	sckt, err := net.ListenUnix("unix", &net.UnixAddr{sp, "unix"})
 	if err != nil {
 		panic(err)
 	}
-	defer os.Remove(socketPath)
+	defer os.Remove(sp)
 
 	defer e.Conn().Close()
 
 	l := e.Looping(sckt)
 
-	err = e.LoadConfig(ConfigPath)
+	cp := provided.configPath()
+	err = e.LoadConfig(cp)
 
 	if err != nil {
 		e.Println(err.Error())
 	}
 
-	e.Println("running...")
+	e.Add("ConfigPath", cp)
+
 	e.Println(pkgVersion.Fmt())
 
 EVENT:
@@ -86,7 +103,7 @@ EVENT:
 		case <-l.Pre:
 			<-l.Post
 		case msg := <-l.Comm:
-			if verbose {
+			if provided.Verbose {
 				e.Println(msg)
 			}
 		case sig := <-l.Sys:

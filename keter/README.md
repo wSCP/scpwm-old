@@ -57,18 +57,18 @@ Each line of the configuration file is interpreted as so:
 
 General syntax:
 
+```
 HOTKEY
     COMMAND
 
 HOTKEY      := CHORD_1 ; CHORD_2 ; … ; CHORD_n
-
 CHORD_i     := [MODIFIERS_i +] [@|;|~]KEYSYM_i
-
 MODIFIERS_i := MODIFIER_i1 + MODIFIER_i2 + … + MODIFIER_ik
+```
 
 The valid modifier names are: super, hyper, meta, alt, control, ctrl, shift, mode_switch, lock, mod1, mod2, mod3, mod4, mod5 and any.
 
-The keysym names are given by the output of xev.
+The keysym names are given by the output of **xev**.
 
 Hotkeys and commands can be spread across multiple lines by ending each partial line with a backslash character.
 

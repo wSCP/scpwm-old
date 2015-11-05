@@ -288,22 +288,6 @@ func (i *storeItem) Pad() [4]int {
 //stickyStill              bool
 //RecordHistory            bool
 
-//func init() {
-//numMonitors, numDesktops, numClients := 0, 0, 0
-//monitorUid, desktopUid := 0, 0
-//mon, monHead, monTail, priMon := nil, nil, nil, nil
-//historyHead, historyTail, historyNeedle := nil, nil, nil
-//ruleHead, ruleTail := nil, nil
-//stackHead, stackTail := nil, nil
-//subscribeHead, subscribetail := nil, nil
-//pendingRuleHead, pendingRuleTail := nil, nil
-//lastMotionTime, lastMotionX, lastMotionY := 0, 0, 0
-//visible, autoRaise, stickyStill, RecordHistory = true, true, true, true
-//randrBase := 0
-//exit_status = 0;
-//}
-
-//child_polarity_t initial_polarity;
 /*
 	FocusedBorderColor          "#7e7f89"
 	ActiveBorderColor           "#545350"

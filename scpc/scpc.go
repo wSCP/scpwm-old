@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -10,28 +9,46 @@ import (
 	"os"
 	"time"
 
+	"github.com/thrisp/scpwm/flarg"
 	"github.com/thrisp/scpwm/version"
 )
 
 var (
-	socketEnv       string = "SCPWM_SOCKET"
-	socketPathTpl   string = "/tmp/scpwm%s_%d_%d-socket"
-	socketPath      string
-	responseTimeout time.Duration = 2
-	verbose         bool
-	logger          = log.New(os.Stderr, "[SCPC] ", log.Ldate|log.Lmicroseconds)
-	pkgVersion      version.Version
-	packageName     string = "SCPWM scpc"
-	versionTag      string = "No version tag supplied with compilation"
-	versionHash     string
-	versionDate     string
-	callVersion     bool
+	provided    *args
+	logger      = log.New(os.Stderr, "[SCPC] ", log.Ldate|log.Lmicroseconds)
+	pkgVersion  version.Version
+	packageName string = "SCPWM scpc"
+	versionTag  string = "No version tag supplied with compilation"
+	versionHash string
+	versionDate string
 )
 
-func defaulSocketPath() string {
-	var socketPath = os.Getenv(socketEnv)
+type args struct {
+	SocketEnv     string        `arg:"-s,--socket"`
+	socketPathTpl string        `arg:"-"`
+	SocketPath    string        `arg:"-p,--path"`
+	Timeout       time.Duration `arg:"-t,--timeout"`
+	Verbose       bool          `arg:"--verbose"`
+	Version       bool          `arg:"-v,--version"`
+	Command       []string      `arg:"positional"`
+}
+
+func defaultArgs() *args {
+	return &args{
+		"SCPWM_SOCKET",
+		"/tmp/scpwm%s_%d_%d-socket",
+		"",
+		(2 * time.Second),
+		false,
+		false,
+		nil,
+	}
+}
+
+func (a *args) socketPath() string {
+	var socketPath = os.Getenv(a.SocketEnv)
 	if socketPath == "" {
-		socketPath = fmt.Sprintf(socketPathTpl, "", 0, 0)
+		socketPath = fmt.Sprintf(a.socketPathTpl, "", 0, 0)
 	}
 	return socketPath
 }
@@ -45,45 +62,29 @@ func removable(index int, remove []int) bool {
 	return false
 }
 
-func send(args []string) []byte {
-	var r []int
-	for i, v := range args {
-		switch v {
-		case "-verbose", "-timeout", "-path", "-env":
-			r = append(r, i, i+1)
-		}
-	}
-
-	var send []string
-
-	for i, v := range args {
-		if !removable(i, r) {
-			send = append(send, v)
-		}
-	}
-
-	idx := len(send) - 1
+func send(command []string) []byte {
+	stop := len(command) - 1
 
 	b := new(bytes.Buffer)
-	for i, v := range send {
+	for i, v := range command {
 		b.WriteString(v)
-		if i != idx {
+		if i != stop {
 			b.WriteRune(' ')
 		}
 	}
 	return b.Bytes()
 }
 
-func responded(r Response, sent []byte) Response {
+func responded(r Response, sent []byte, verbose bool) Response {
 	if verbose {
 		logger.Println(fmt.Sprintf("euclid returned: `%s` to sent message: `%s`", r, sent))
 	}
 	return r
 }
 
-func timedout() Response {
+func timedout(to time.Duration, verbose bool) Response {
 	if verbose {
-		logger.Println("timeout, no response from euclid after %d seconds", responseTimeout)
+		logger.Println("timeout, no response from euclid after %d seconds", to)
 	}
 	return timeout
 }
@@ -126,13 +127,13 @@ var stringResponse = map[string]Response{
 	"success": success,
 }
 
-func response(c io.Reader, sent []byte) Response {
+func response(c io.Reader, provided *args, sent []byte) Response {
 	buf := make([]byte, 1024)
-	t := time.After(responseTimeout * time.Second)
+	t := time.After(provided.Timeout)
 	for {
 		select {
 		case <-t:
-			return timedout()
+			return timedout(provided.Timeout, provided.Verbose)
 		default:
 			n, err := c.Read(buf[:])
 			if err != nil {
@@ -140,7 +141,7 @@ func response(c io.Reader, sent []byte) Response {
 				return failure
 			}
 			if resp, ok := stringResponse[string(buf[0:n])]; ok {
-				return responded(resp, sent)
+				return responded(resp, sent, provided.Verbose)
 			}
 		}
 	}
@@ -154,24 +155,26 @@ func exit(c *net.UnixConn, code int) {
 }
 
 func main() {
-	if callVersion {
+	if provided.Version {
 		fmt.Printf(pkgVersion.Fmt())
 		os.Exit(0)
 	}
+
 	t := "unix"
 	laddr := net.UnixAddr{"/tmp/scpc", t}
-	conn, err := net.DialUnix(t, &laddr, &net.UnixAddr{socketPath, t})
+	conn, err := net.DialUnix(t, &laddr, &net.UnixAddr{provided.socketPath(), t})
 	if err != nil {
 		panic(err)
 	}
 
-	sent := send(os.Args[1:])
+	sent := send(provided.Command)
+
 	_, err = conn.Write(sent)
 	if err != nil {
 		panic(err)
 	}
 
-	rsp := response(conn, sent)
+	rsp := response(conn, provided, sent)
 	switch rsp {
 	case success:
 		exit(conn, 0)
@@ -185,11 +188,7 @@ func main() {
 }
 
 func init() {
-	flag.StringVar(&socketEnv, "env", socketEnv, "Read the socket from the given env variable")
-	flag.StringVar(&socketPath, "path", defaulSocketPath(), "Read the socket from the given path.")
-	flag.DurationVar(&responseTimeout, "timeout", responseTimeout, "Wait only specified seconds euclid's response, default is 2")
-	flag.BoolVar(&verbose, "verbose", verbose, "Verbose logging messages, default is false.")
-	flag.BoolVar(&callVersion, "version", callVersion, "Print the package version.")
-	flag.Parse()
+	provided = defaultArgs()
+	flarg.MustParse(provided)
 	pkgVersion = version.New(packageName, versionTag, versionHash, versionDate)
 }
