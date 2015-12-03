@@ -1,4 +1,4 @@
-package ewmh
+package icccm
 
 /*
 import (

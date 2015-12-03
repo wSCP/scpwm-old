@@ -1,4 +1,4 @@
-package ewmh
+package icccm
 
 import (
 	"github.com/BurntSushi/xgb"
@@ -19,12 +19,13 @@ type EWMH interface {
 	ClientListGet() ([]xproto.Window, error)
 	ActiveWindowGet() (xproto.Window, error)
 	ActiveWindowSet(xproto.Window) error
+	CloseWindow(xproto.Window) error
+	CloseWindowExtra(xproto.Window, xproto.Timestamp, int) error
 	WmDesktopGet(xproto.Window) (uint, error)
 	WmDesktopSet(xproto.Window, uint) error
 	WmStateGet(xproto.Window) ([]string, error)
 	WmStateSet(xproto.Window, []string) error
 	WmWindowTypeGet(xproto.Window) ([]string, error)
-	WmClassGet(xproto.Window) (string, string, error)
 }
 
 type ewmh struct {
@@ -33,7 +34,7 @@ type ewmh struct {
 	atom atomic.Atomic
 }
 
-func New(c *xgb.Conn, r xproto.Window, a atomic.Atomic) EWMH {
+func newEwmh(c *xgb.Conn, r xproto.Window, a atomic.Atomic) EWMH {
 	return &ewmh{
 		conn: c,
 		root: r,
@@ -96,17 +97,17 @@ func (e *ewmh) ActiveWindowSet(w xproto.Window) error {
 	return e.atom.ChangeProp32(e.root, "_NET_ACTIVE_WINDOW", "WINDOW", uint(w))
 }
 
-//func (e *ewmh) CloseWindow(w xproto.Window) error {
-//	return e.CloseWindowExtra(w, 0, 2)
-//}
+func (e *ewmh) CloseWindow(w xproto.Window) error {
+	return e.CloseWindowExtra(w, 0, 2)
+}
 
-//func (e *ewmh) CloseWindowExtra(w xproto.Window, time xproto.Timestamp, source int) error {
-//	atm, err := e.atom.Atom("_NET_CLOSE_WINDOW")
-//	if err != nil {
-//		return err
-//	}
-//	return ClientEvent(e.conn, e.root, w, atm, int(time), source)
-//}
+func (e *ewmh) CloseWindowExtra(w xproto.Window, time xproto.Timestamp, source int) error {
+	atm, err := e.atom.Atom("_NET_CLOSE_WINDOW")
+	if err != nil {
+		return err
+	}
+	return clientEvent(e.conn, e.root, w, atm, int(time), source)
+}
 
 func (e *ewmh) WmDesktopGet(w xproto.Window) (uint, error) {
 	return e.atom.PropValNum(e.atom.GetProp(w, "_NET_WM_DESKTOP"))
@@ -115,6 +116,12 @@ func (e *ewmh) WmDesktopGet(w xproto.Window) (uint, error) {
 func (e *ewmh) WmDesktopSet(w xproto.Window, desk uint) error {
 	return e.atom.ChangeProp32(w, "_NET_WM_DESKTOP", "CARDINAL", uint(desk))
 }
+
+const (
+	StateRemove = iota
+	StateAdd
+	StateToggle
+)
 
 func (e *ewmh) WmStateGet(w xproto.Window) ([]string, error) {
 	raw, err := e.atom.GetProp(w, "_NET_WM_STATE")
@@ -152,18 +159,3 @@ func (e *ewmh) WmWindowTypeGet(w xproto.Window) ([]string, error) {
 //WM_WINDOW_TYPE_UTILITY
 
 //WM_WINDOW_TYPE_TOOLBAR
-
-var WmClassGetError = Xrror("Two strings make up WM_CLASS -- found %d in '%v'.").Out
-
-// WmClassGet returns the class and instance name of a window, as well as any error.
-func (e *ewmh) WmClassGet(w xproto.Window) (string, string, error) {
-	raw, err := e.atom.PropValStrs(e.atom.GetProp(w, "WM_CLASS"))
-	if err != nil {
-		return "", "", err
-	}
-	if len(raw) != 2 {
-		return "", "", WmClassGetError(len(raw), raw)
-	}
-
-	return raw[1], raw[0], nil
-}

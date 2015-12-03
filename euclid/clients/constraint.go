@@ -1,9 +1,13 @@
 package clients
 
+import (
+	"github.com/thrisp/scpwm/euclid/rules"
+)
+
 type Constraint interface {
 	Min(string) uint16
 	Max(string) uint16
-	SetConstraint(string, string, uint16)
+	SetConstraint(*rules.Consequence)
 }
 
 type constraint struct {
@@ -13,8 +17,10 @@ type constraint struct {
 	maxHeight uint16
 }
 
-func newConstraint() *constraint {
-	return &constraint{}
+func newConstraint(csq *rules.Consequence) Constraint {
+	c := &constraint{}
+	c.SetConstraint(csq)
+	return c
 }
 
 func (c *constraint) Min(dimension string) uint16 {
@@ -38,30 +44,18 @@ func (c *constraint) Max(dimension string) uint16 {
 
 }
 
-func (c *constraint) setHeightDirection(direction string, value uint16) {
-	switch direction {
-	case "min":
-		c.minHeight = value
-	case "max":
-		c.maxHeight = value
+func (c *constraint) SetConstraint(csq *rules.Consequence) {
+	if csq.MinHeight != 0 {
+		c.minHeight = csq.MinHeight
 	}
-}
-
-func (c *constraint) setWidthDirection(direction string, value uint16) {
-	switch direction {
-	case "min":
-		c.minWidth = value
-	case "max":
-		c.maxWidth = value
+	if csq.MaxHeight != 0 {
+		c.maxHeight = csq.MaxHeight
 	}
-}
-
-func (c *constraint) SetConstraint(dimension, direction string, value uint16) {
-	switch dimension {
-	case "height":
-		c.setHeightDirection(direction, value)
-	case "width":
-		c.setWidthDirection(direction, value)
+	if csq.MinWidth != 0 {
+		c.minWidth = csq.MinWidth
+	}
+	if csq.MaxWidth != 0 {
+		c.maxWidth = csq.MaxWidth
 	}
 }
 

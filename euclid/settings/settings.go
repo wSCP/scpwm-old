@@ -19,11 +19,13 @@ type Getter interface {
 	Int(string) int
 	Float(string) float64
 	List(string) []string
+	Pad() [4]int
 }
 
 type Setter interface {
 	Add(string, string)
 	Insert(StoreItem)
+	Reset()
 }
 
 type settings struct {
@@ -89,8 +91,8 @@ func (s *settings) List(key string) []string {
 	return []string{}
 }
 
-func (s *settings) Pad(key string) [4]int {
-	q, _ := s.Query(key)
+func (s *settings) Pad() [4]int {
+	q, _ := s.Query("Pad")
 	if q != nil {
 		return q.Pad()
 	}
@@ -105,6 +107,12 @@ func (s *settings) Insert(i StoreItem) {
 	s.s.insert(i)
 }
 
+func (s *settings) Reset() {
+	for _, v := range s.s {
+		v.Reset()
+	}
+}
+
 func (s *settings) Copy() Settings {
 	nst := make(store)
 	for k, v := range s.s {
@@ -115,6 +123,7 @@ func (s *settings) Copy() Settings {
 
 type StoreItem interface {
 	Set(string, string, string)
+	Reset()
 	Key() string
 	String() string
 	Bool() bool
@@ -128,7 +137,7 @@ type StoreItem interface {
 type storeItem struct {
 	key        string
 	value      string
-	localvalue string
+	localValue string
 	global     bool
 }
 
@@ -142,7 +151,7 @@ func NewStoreItem(k, v string) StoreItem {
 
 func (i *storeItem) valueScope() string {
 	if !i.global {
-		return i.localvalue
+		return i.localValue
 	}
 	return i.value
 }
@@ -152,9 +161,14 @@ func (i *storeItem) Set(scope, key, value string) {
 	case "global":
 		i.value = value
 	case "local":
-		i.localvalue = value
+		i.localValue = value
+		i.global = false
 	}
 	i.key = key
+}
+
+func (i *storeItem) Reset() {
+	i.global = true
 }
 
 func (i *storeItem) Key() string {
@@ -234,7 +248,7 @@ func (i *storeItem) List(l ...string) []string {
 		if i.global {
 			i.value = lst
 		} else {
-			i.localvalue = lst
+			i.localValue = lst
 		}
 	}
 	return strings.Split(i.valueScope(), ",")
@@ -246,7 +260,7 @@ func Pad(key string, right, up, left, down int) StoreItem {
 }
 
 func DefaultPad() StoreItem {
-	return Pad("DefaultPad", 0, 0, 0, 0)
+	return Pad("Pad", 0, 0, 0, 0)
 }
 
 func (i *storeItem) Pad() [4]int {

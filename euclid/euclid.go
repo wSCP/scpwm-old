@@ -74,21 +74,21 @@ func main() {
 		fmt.Printf(pkgVersion.Fmt())
 		os.Exit(0)
 	}
+
 	e := manager.New()
+
 	sp := provided.socketPath()
 	sckt, err := net.ListenUnix("unix", &net.UnixAddr{sp, "unix"})
 	if err != nil {
 		panic(err)
 	}
 	defer os.Remove(sp)
-
 	defer e.Conn().Close()
 
 	l := e.Looping(sckt)
 
 	cp := provided.configPath()
 	err = e.LoadConfig(cp)
-
 	if err != nil {
 		e.Println(err.Error())
 	}

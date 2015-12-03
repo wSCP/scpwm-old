@@ -8,7 +8,7 @@ import (
 type Ruler interface {
 	Rule(...string) bool
 	Unrule(...string) bool
-	Applicable(...string) []Rule
+	Applicable(string, string) *Consequence
 	Pending() []Rule
 }
 
@@ -66,26 +66,24 @@ func (r *ruler) remove(d string) bool {
 	return false
 }
 
-func contains(tags []string, having ...string) bool {
-	for _, t := range tags {
-		for _, h := range having {
-			if t == h {
-				return true
-			}
+func contains(class, instance string, having ...string) bool {
+	for _, h := range having {
+		if class == h || instance == h {
+			return true
 		}
 	}
 	return false
 }
 
-func (r *ruler) Applicable(tags ...string) []Rule {
-	var ret []Rule
+func (r *ruler) Applicable(class, instance string) *Consequence {
+	var applicable []Rule
 	for _, rule := range r.pending {
 		cause := rule.Cause().String()
-		if contains(tags, cause) {
-			ret = append(ret, rule)
+		if contains(class, instance, cause) {
+			applicable = append(applicable, rule)
 		}
 	}
-	return nil
+	return NewConsequence(class, instance, applicable...)
 }
 
 func (r *ruler) Pending() []Rule {

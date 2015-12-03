@@ -17,6 +17,7 @@ type Desktop interface {
 	Focus()
 	Focused() bool
 	Floating() bool
+	Layout() string
 	Clients() *branch.Branch
 }
 
@@ -36,6 +37,7 @@ type desktop struct {
 	name     string
 	focused  bool
 	floating bool
+	layout   string
 	clients  *branch.Branch
 }
 
@@ -60,6 +62,10 @@ func (d *desktop) Set(k string, v interface{}) {
 	case "floating":
 		if value, ok := v.(bool); ok {
 			d.floating = value
+		}
+	case "layout":
+		if value, ok := v.(string); ok {
+			d.layout = value
 		}
 	}
 }
@@ -97,6 +103,10 @@ func (d *desktop) Focused() bool {
 
 func (d *desktop) Floating() bool {
 	return d.floating
+}
+
+func (d *desktop) Layout() string {
+	return d.layout
 }
 
 func (d *desktop) Clients() *branch.Branch {
@@ -171,36 +181,7 @@ func (d *desktop) Merge(dst Desktop) {
 	// reconfigure clients to this desktop
 }
 
-//func (d *desktop) Arrange() {
-	/*
-		setLayout := d.layout
-		e := d.loc.e
 
-		if e.Bool("LeafMonocle") && d.TiledCount() == 1 {
-			d.layout = monocle
-		}
-
-		m := d.loc.m
-		rect := m.rectangle
-		var gap int
-		if e.Bool("GaplessMonocle") && d.layout == monocle {
-			gap = 0
-		} else {
-			gap = d.windowGap
-		}
-
-		mp := m.pad
-		dp := d.pad
-
-		rect.X += int16(mp.Get(Left) + dp.Get(Left) + gap)
-		rect.Y += int16(dp.Get(Up) + dp.Get(Up) + gap)
-		rect.Width -= uint16(mp.Get(Left) + dp.Get(Left) + dp.Get(Right) + mp.Get(Right) + gap)
-		rect.Height -= uint16(mp.Get(Up) + dp.Get(Up) + dp.Get(Down) + mp.Get(Down) + gap)
-
-		//ApplyLayout(d.m, d, d.root, rect, rect)
-
-		d.layout = setLayout
-//}
 
 //func (d *desktop) TiledCount() int {
 	//var cnt int

@@ -6,7 +6,10 @@ import (
 )
 
 type Floatr interface {
-	Position(int16, int16)
+	FRectangle() xproto.Rectangle
+	X(int16)
+	Y(int16)
+	Reposition(int16, int16)
 	Width(uint16)
 	Height(uint16)
 	Size(uint16, uint16)
@@ -21,12 +24,25 @@ type floatr struct {
 	rectangle xproto.Rectangle
 }
 
-func newFloatr() *floatr {
+func newFloatr() Floatr {
 	return &floatr{}
 }
 
-func (f *floatr) Position(x, y int16) {
-	f.rectangle.X, f.rectangle.Y = x, y
+func (f *floatr) FRectangle() xproto.Rectangle {
+	return f.rectangle
+}
+
+func (f *floatr) X(x int16) {
+	f.rectangle.X = x
+}
+
+func (f *floatr) Y(y int16) {
+	f.rectangle.Y = y
+}
+
+func (f *floatr) Reposition(x, y int16) {
+	f.X(x)
+	f.Y(y)
 }
 
 func (f *floatr) Width(w uint16) {
@@ -126,7 +142,7 @@ func (f *floatr) UpdateFloatingRectangle(c *xgb.Conn, w xproto.Window) {
 	geo, _ := xproto.GetGeometry(c, xproto.Drawable(w)).Reply()
 
 	if geo != nil {
-		f.Position(geo.X, geo.Y)
+		f.Reposition(geo.X, geo.Y)
 		f.Size(geo.Width, geo.Height)
 	}
 }

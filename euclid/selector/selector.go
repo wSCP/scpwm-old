@@ -46,52 +46,55 @@ func DetermineNode(from string) Node {
 	return NNone
 }
 
-type Reference int
+type Category int
 
 const (
-	NoReference Reference = iota
-	Cycled                // Cycle
-	Directed              // Direction
-	Oriented              // Orientation
-	Sized                 // Size
-	Aged                  // Age
-	Focused               // by focus, urgency
-	Tagged                // by name, tag or id
-	Special               // relatively unique property of Node, e.g. any client state
+	NoCategory Category = iota
+	Cycled              // Cycle
+	Directed            // Direction
+	Oriented            // Orientation
+	Sized               // Size
+	Aged                // Age
+	Focused             // by focus, urgency
+	Tagged              // by name, tag or id
+	Capacity            // Capacity(of monitor or desktop state)
+	State               // client state
 )
 
 type Selector interface {
 	Raw() []string
 	Node() Node
-	References() Reference
+	Category() Category
 	Modifiers() []string
 }
 
 func New(base string) Selector {
 	spl := strings.Split(base, " ")
 	node := spl[0]
-	ref := spl[1]
+	cat := spl[1]
 	modifiers := spl[1:]
 	sel := selector{node: DetermineNode(node)}
-	switch ref {
+	switch cat {
 	case "first", "last", "next", "previous", "forward", "backward":
-		sel.ref = Cycled
+		sel.cat = Cycled
 	case "right", "down", "left", "up":
-		sel.ref = Directed
+		sel.cat = Directed
 	case "closest", "closer", "furthest", "further", "horizontal", "vertical":
-		sel.ref = Oriented
+		sel.cat = Oriented
 	case "biggest", "smallest":
-		sel.ref = Sized
+		sel.cat = Sized
 	case "youngest", "younger", "oldest", "older":
-		sel.ref = Aged
+		sel.cat = Aged
 	case "primary", "focused", "unfocused", "current", "urgent":
-		sel.ref = Focused
-	case "name", "id", "index":
-		sel.ref = Tagged
-	case "local", "free", "occupied", "tiled", "floating", "like", "unlike", "manual", "automatic":
-		sel.ref = Special
+		sel.cat = Focused
+	case "name", "id", "index", "class", "instance":
+		sel.cat = Tagged
+	case "free", "empty", "full", "occupied", "tiled", "floating":
+		sel.cat = Capacity
+	case "local", "like", "unlike", "manual", "automatic":
+		sel.cat = State
 	}
-	if sel.ref == NoReference {
+	if sel.cat == NoCategory {
 		return nil
 	}
 	sel.raw = spl
@@ -102,7 +105,7 @@ func New(base string) Selector {
 type selector struct {
 	raw  []string
 	node Node
-	ref  Reference
+	cat  Category
 	mod  []string
 }
 
@@ -114,8 +117,8 @@ func (s selector) Node() Node {
 	return s.node
 }
 
-func (s selector) References() Reference {
-	return s.ref
+func (s selector) Category() Category {
+	return s.cat
 }
 
 func (s selector) Modifiers() []string {

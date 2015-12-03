@@ -1,7 +1,17 @@
-package main
+package utils
 
-import "fmt"
+import "strings"
 
+func MatchesAny(s string, ss ...string) bool {
+	for _, str := range ss {
+		if s == str || strings.Contains(str, s) {
+			return true
+		}
+	}
+	return false
+}
+
+/*
 const (
 	MAXINT   = int(^uint(0) >> 1)
 	MAXSTATE = int(4)
@@ -49,3 +59,5 @@ func indexFromString(s string, i int) bool {
 	i = idx
 	return true
 }
+
+*/

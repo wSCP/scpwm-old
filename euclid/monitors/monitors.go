@@ -56,17 +56,11 @@ func Focus(monitors *branch.Branch, mon Monitor) {
 	mon.Focus()
 }
 
-func FocusSelect(monitors *branch.Branch, sel selector.Selector) {
-	//current := Focused(monitors)
-	//var toFocus Monitor
-	//switch direction {
-	//case "next":
-	//	toFocus = Next(monitors)
-	//case "previous":
-	//	toFocus = Prev(monitors)
-	//}
-	//toFocus.Focus()
-	//current.Set("focus", false)
+func FocusSelect(sel []selector.Selector, monitors *branch.Branch) {
+	selected := Select(sel, monitors)
+	if selected != nil {
+		Focus(monitors, selected)
+	}
 }
 
 /*

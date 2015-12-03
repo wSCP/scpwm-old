@@ -109,6 +109,14 @@ func (c command) config(d Data) (Response, string, error) {
 	return mUNKNOWN, "", nil
 }
 
+func (c command) setSetting(s settings.Settings) (Response, string, error) {
+	return mUNKNOWN, "", errors.New("SET SETTING UNKNOWN")
+}
+
+func (c command) getSetting(s settings.Settings) (Response, string, error) {
+	return mUNKNOWN, "", errors.New("GET SETTING UNKNOWN")
+}
+
 func (c command) monitor(d Data) (Response, string, error) {
 	return mUNKNOWN, "", nil
 }
@@ -143,14 +151,6 @@ func (c command) control(d Data) (Response, string, error) {
 
 func (c command) quit(d Data) (Response, string, error) {
 	return mUNKNOWN, "", nil
-}
-
-func (c command) setSetting(s settings.Settings) (Response, string, error) {
-	return mUNKNOWN, "", errors.New("SET SETTING UNKNOWN")
-}
-
-func (c command) getSetting(s settings.Settings) (Response, string, error) {
-	return mUNKNOWN, "", errors.New("GET SETTING UNKNOWN")
 }
 
 //var subcmdTranslate map[string]string = map[string]string{

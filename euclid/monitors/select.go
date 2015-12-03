@@ -1,45 +1,65 @@
 package monitors
 
 import (
-	"strings"
+	"strconv"
 
 	"github.com/thrisp/scpwm/euclid/branch"
 	"github.com/thrisp/scpwm/euclid/selector"
+	"github.com/thrisp/scpwm/utils"
 )
 
-func Select(monitors *branch.Branch, sel ...selector.Selector) Monitor {
-	var probable []Monitor
-	for _, s := range sel {
-		if s.Node() == selector.NMonitor {
-			switch s.References() {
-			case selector.Cycled:
-				probable = append(probable, Cycled(monitors, s))
-			case selector.Focused:
-				probable = append(probable, Focused(monitors))
-			case selector.Tagged:
-				probable = append(probable, Tagged(monitors, s))
+func countHigh(m map[Monitor]int) Monitor {
+	var ret Monitor
+	var count int
+	for k, v := range m {
+		if v > count {
+			count = v
+			ret = k
+		}
+	}
+	return ret
+}
+
+func addTo(m map[Monitor]int, mon Monitor) {
+	if mon != nil {
+		if c, ok := m[mon]; ok {
+			c++
+			m[mon] = c
+		} else {
+			m[mon] = 1
+		}
+	}
+}
+
+func Select(sel []selector.Selector, ms ...*branch.Branch) Monitor {
+	var m map[Monitor]int
+	for _, monitors := range ms {
+		for _, s := range sel {
+			if s.Node() == selector.NMonitor {
+				switch s.Category() {
+				case selector.Cycled:
+					mon := Cycled(monitors, s)
+					addTo(m, mon)
+				case selector.Focused:
+					mon := Focused(monitors)
+					addTo(m, mon)
+				case selector.Tagged:
+					mon := Tagged(monitors, s)
+					addTo(m, mon)
+				}
 			}
 		}
 	}
-	return nil
-}
-
-func anyOf(s string, anyof ...string) bool {
-	for _, a := range anyof {
-		if s == a || strings.Contains(a, s) {
-			return true
-		}
-	}
-	return false
+	return countHigh(m)
 }
 
 func Cycled(monitors *branch.Branch, sel selector.Selector) Monitor {
-	cy := sel.Raw()
+	cy := sel.Modifiers()
 	for _, cycle := range cy {
 		switch {
-		case anyOf(cycle, "next", "forward"):
+		case utils.MatchesAny(cycle, "next", "forward"):
 			return Next(monitors)
-		case anyOf(cycle, "prev", "previous", "backward"):
+		case utils.MatchesAny(cycle, "prev", "previous", "backward"):
 			return Prev(monitors)
 		}
 	}
@@ -47,16 +67,30 @@ func Cycled(monitors *branch.Branch, sel selector.Selector) Monitor {
 }
 
 func Tagged(monitors *branch.Branch, sel selector.Selector) Monitor {
-	t := sel.Raw()
+	t := sel.Modifiers()
 	var fn MatchMonitor
 	for _, tagged := range t {
 		switch tagged {
 		case "name":
-			fn = func(Monitor) bool { return false }
+			fn = func(m Monitor) bool {
+				for _, name := range t {
+					if m.Name() == name {
+						return true
+					}
+				}
+				return false
+			}
 		case "id":
-			fn = func(Monitor) bool { return false }
-		case "index":
-			fn = func(Monitor) bool { return false }
+			fn = func(m Monitor) bool {
+				for _, id := range t {
+					if nid, err := strconv.Atoi(id); err == nil {
+						if m.Id() == uint32(nid) {
+							return true
+						}
+					}
+				}
+				return false
+			}
 		}
 	}
 	return seek(monitors, fn)

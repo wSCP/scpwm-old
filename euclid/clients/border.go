@@ -16,7 +16,7 @@ type bordr struct {
 	borderWidth uint
 }
 
-func newBordr() *bordr {
+func newBordr() Bordr {
 	return &bordr{}
 }
 

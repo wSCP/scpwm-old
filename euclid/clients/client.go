@@ -3,7 +3,7 @@ package clients
 import (
 	"github.com/BurntSushi/xgb"
 	"github.com/BurntSushi/xgb/xproto"
-
+	"github.com/thrisp/scpwm/euclid/rules"
 	"github.com/thrisp/scpwm/euclid/window"
 )
 
@@ -27,27 +27,27 @@ type client struct {
 	class    string
 	instance string
 	window.Window
-	*stackr
-	*floatr
-	*tilr
-	*state
-	*constraint
-	*bordr
-	*shiftr
+	Stackr
+	Floatr
+	Tilr
+	State
+	Constraint
+	Bordr
+	Shiftr
 }
 
-func NewClient(class, instance string, c *xgb.Conn, x xproto.Window, r xproto.Window) Client {
+func NewClient(c *xgb.Conn, x xproto.Window, r xproto.Window, csq *rules.Consequence) Client {
 	cl := &client{
-		class:      class,
-		instance:   instance,
+		class:      csq.Class,
+		instance:   csq.Instance,
 		Window:     window.New(c, x, r),
-		stackr:     newStackr(),
-		floatr:     newFloatr(),
-		tilr:       newTilr(),
-		state:      newState(),
-		constraint: newConstraint(),
-		bordr:      newBordr(),
-		shiftr:     newShiftr(),
+		Stackr:     newStackr(),
+		Floatr:     newFloatr(),
+		Tilr:       newTilr(),
+		State:      newState(csq),
+		Constraint: newConstraint(csq),
+		Bordr:      newBordr(),
+		Shiftr:     newShiftr(),
 	}
 	return cl
 }
@@ -62,9 +62,9 @@ func (c *client) Instance() string {
 
 func (c *client) Rectangle() xproto.Rectangle {
 	if c.Tiled() {
-		return c.tilr.rectangle
+		return c.TRectangle()
 	}
-	return c.floatr.rectangle
+	return c.FRectangle()
 }
 
 func (c *client) Adjacent(o Client, direction string) bool {

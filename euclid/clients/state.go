@@ -1,6 +1,9 @@
 package clients
 
-import "github.com/BurntSushi/xgb/xproto"
+import (
+	"github.com/BurntSushi/xgb/xproto"
+	"github.com/thrisp/scpwm/euclid/rules"
+)
 
 type ClientState int
 
@@ -20,8 +23,11 @@ type State interface {
 	Tiled() bool
 	Floating() bool
 	Focused() bool
+	Pseudotiled() bool
+	Fullscreen() bool
 	Get(ClientState) bool
 	Set(ClientState, bool)
+	SetState(*rules.Consequence)
 }
 
 type state struct {
@@ -39,8 +45,10 @@ type state struct {
 	private     bool
 }
 
-func newState() *state {
-	return &state{}
+func newState(csq *rules.Consequence) State {
+	s := &state{}
+	s.SetState(csq)
+	return s
 }
 
 func (s *state) Tiled() bool {
@@ -53,6 +61,14 @@ func (s *state) Floating() bool {
 
 func (s *state) Focused() bool {
 	return s.focus
+}
+
+func (s *state) Pseudotiled() bool {
+	return s.pseudoTiled
+}
+
+func (s *state) Fullscreen() bool {
+	return s.fullscreen
 }
 
 func (s *state) Get(cs ClientState) bool {
@@ -164,3 +180,5 @@ func (s *state) setUrgent(v bool) {
 func (s *state) setVacant(v bool) {
 	s.vacant = v
 }
+
+func (s *state) SetState(csq *rules.Consequence) {}

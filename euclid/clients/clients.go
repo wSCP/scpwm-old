@@ -1,70 +1,40 @@
 package clients
 
-import "github.com/thrisp/scpwm/euclid/branch"
+import (
+	"github.com/thrisp/scpwm/euclid/branch"
+	"github.com/thrisp/scpwm/euclid/rules"
+)
 
 func New() *branch.Branch {
 	return branch.New("clients")
 }
 
-type MatchClient func(Client) bool
-
-func seek(clients *branch.Branch, fn MatchClient) Client {
-	curr := clients.Front()
-	for curr != nil {
-		client := curr.Value.(Client)
-		if found := fn(client); found {
-			return client
-		}
-		curr = curr.Next()
+func Add(cs *branch.Branch, c Client, f Client, csq *rules.Consequence) {
+	if c != nil {
+		cs.PushFront(c)
 	}
+}
+
+func Remove(cs *branch.Branch, c Client) error {
 	return nil
 }
 
-func seekOffset(clients *branch.Branch, fn MatchClient, offset int) Client {
-	curr := clients.Front()
-	for curr != nil {
-		client := curr.Value.(Client)
-		if found := fn(client); found {
-			switch offset {
-			case -1:
-				client = curr.PrevContinuous().Value.(Client)
-			case 1:
-				client = curr.NextContinuous().Value.(Client)
-			}
-			return client
-		}
-		curr = curr.Next()
-	}
-	return nil
-}
-
-func isFocused(c Client) bool {
-	if c.Focused() {
+/*
+func IsHead(cs *branch.Branch, c Client) bool {
+	f := cs.Front()
+	fr := f.Value.(Client)
+	if fr == c {
 		return true
 	}
 	return false
 }
 
-func Focused(clients *branch.Branch) Client {
-	return seek(clients, isFocused)
-}
-
-func seekAny(clients *branch.Branch, fn MatchClient) []Client {
-	var ret []Client
-	curr := clients.Front()
-	for curr != nil {
-		client := curr.Value.(Client)
-		if match := fn(client); match {
-			ret = append(ret, client)
-		}
-		curr = curr.Next()
-	}
-	return ret
-}
-
-func All(clients *branch.Branch) []Client {
-	fn := func(c Client) bool {
+func IsTail(cs *branch.Branch, c Client) bool {
+	b := cs.Back()
+	ba := b.Value.(Client)
+	if ba == c {
 		return true
 	}
-	return seekAny(clients, fn)
+	return false
 }
+*/

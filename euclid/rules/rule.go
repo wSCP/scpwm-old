@@ -8,12 +8,14 @@ import (
 type Apply int
 
 const (
-	SetSplitDirection Apply = iota
-	SetSplitRatio
+	SplitDirection Apply = iota
+	SplitRatio
 	MinWidth
 	MaxWidth
 	MinHeight
 	MaxHeight
+	Layout
+	Layer
 	IsPseudoTiled
 	IsFloating
 	IsLocked
@@ -29,31 +31,33 @@ const (
 )
 
 var stringApply map[string]Apply = map[string]Apply{
-	"direction":   SetSplitDirection, //string
-	"ratio":       SetSplitRatio,     //float64
-	"minwidth":    MinWidth,          //uint16
-	"maxwidth":    MaxWidth,          //uint16
-	"minheight":   MinHeight,         //uint16
-	"maxheight":   MaxHeight,         //uint16
-	"pseudotiled": IsPseudoTiled,     //bool
-	"floating":    IsFloating,        //bool
-	"lock":        IsLocked,          //bool
-	"sticky":      IsSticky,          //bool
-	"private":     IsPrivate,         //bool
-	"bordered":    IsBordered,        //bool
-	"centered":    IsCentered,        //bool
-	"manage":      IsManaged,         //bool
-	"focus":       IsFocused,         //bool
-	"client":      ClientSelector,    //string
-	"desktop":     DesktopSelector,   //string
-	"monitor":     MonitorSelector,   //string
+	"direction":   SplitDirection,  //string
+	"ratio":       SplitRatio,      //float64
+	"minwidth":    MinWidth,        //uint16
+	"maxwidth":    MaxWidth,        //uint16
+	"minheight":   MinHeight,       //uint16
+	"maxheight":   MaxHeight,       //uint16
+	"layout":      Layout,          //string
+	"layer":       Layer,           //string
+	"pseudotiled": IsPseudoTiled,   //bool
+	"floating":    IsFloating,      //bool
+	"lock":        IsLocked,        //bool
+	"sticky":      IsSticky,        //bool
+	"private":     IsPrivate,       //bool
+	"bordered":    IsBordered,      //bool
+	"centered":    IsCentered,      //bool
+	"manage":      IsManaged,       //bool
+	"focus":       IsFocused,       //bool
+	"client":      ClientSelector,  //string
+	"desktop":     DesktopSelector, //string
+	"monitor":     MonitorSelector, //string
 }
 
 func (a Apply) String() string {
 	switch a {
-	case SetSplitDirection:
+	case SplitDirection:
 		return "split direction"
-	case SetSplitRatio:
+	case SplitRatio:
 		return "split ratio"
 	case MinWidth:
 		return "minimum width"

@@ -11,6 +11,7 @@ import (
 )
 
 type Monitor interface {
+	settings.Settings
 	Id() uint32
 	Name() string
 	Rectangle() xproto.Rectangle
@@ -35,7 +36,6 @@ type monitor struct {
 	rectangle xproto.Rectangle
 	root      xproto.Window
 	wired     bool
-	pad       [4]int
 	stickys   int
 	primary   bool
 	focused   bool
@@ -70,20 +70,12 @@ func NewMonitor(id uint32, n string, c *xgb.Conn, root xproto.Window, r xproto.R
 		window.SetVisible(true, c, win, root)
 	}
 
-	var pad [4]int
-	if p, err := s.Query("DefaultPad"); err != nil {
-		pad = [4]int{0, 0, 0, 0}
-	} else {
-		pad = p.Pad()
-	}
-
 	m := &monitor{
 		Settings:  s,
 		c:         c,
 		id:        id,
 		name:      n,
 		root:      root,
-		pad:       pad,
 		rectangle: r,
 		wired:     true,
 		focused:   true,
@@ -109,6 +101,7 @@ func (m *monitor) Rectangle() xproto.Rectangle {
 func (m *monitor) SetRectangle(r xproto.Rectangle) {
 	m.rectangle = r
 }
+
 func (m *monitor) UpdateRoot() {
 	r := m.rectangle
 	xproto.ConfigureWindowChecked(m.c, m.root, xproto.ConfigWindowX, []uint32{uint32(r.X)})

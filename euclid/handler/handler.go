@@ -8,7 +8,7 @@ import (
 	"github.com/BurntSushi/xgb/randr"
 	"github.com/BurntSushi/xgb/xproto"
 	"github.com/thrisp/scpwm/euclid/atomic"
-	"github.com/thrisp/scpwm/euclid/ewmh"
+	"github.com/thrisp/scpwm/euclid/icccm"
 )
 
 type Handler interface {
@@ -17,7 +17,7 @@ type Handler interface {
 	Eventr
 	Callr
 	atomic.Atomic
-	ewmh.EWMH
+	icccm.ICCCM
 }
 
 type Connectr interface {
@@ -62,7 +62,7 @@ type handler struct {
 	callLck *sync.RWMutex
 	end     bool
 	atomic.Atomic
-	ewmh.EWMH
+	icccm.ICCCM
 }
 
 func New(display string, ewhm []string, logr *log.Logger) (Handler, error) {
@@ -89,15 +89,14 @@ func New(display string, ewhm []string, logr *log.Logger) (Handler, error) {
 	h.Atomic = atomic.New(h.conn)
 	h.Atomic.Atom("WM_DELETE_WINDOW")
 	h.Atomic.Atom("WM_TAKE_FOCUS")
-	h.Atomic.Atom("_SCPWM_FLOATING_WINDOW")
 
-	e := ewmh.New(h.conn, h.root, h.Atomic)
-	//err = EWMH.SupportedSet(ewhm)
-	//if err != nil {
-	//	return nil, err
-	//}
+	i := icccm.New(h.conn, h.root, h.Atomic)
+	i.SupportedSet(ewhm)
+	if err != nil {
+		return nil, err
+	}
 	//h.Ewmh.Set("string name", h.root, h.meta)
-	h.EWMH = e
+	h.ICCCM = i
 
 	return h, nil
 }
